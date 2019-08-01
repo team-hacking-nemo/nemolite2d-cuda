@@ -40,6 +40,8 @@ before_install:
 script:
   - . compiler_setup/gnu.sh
   - make
-  - original/nemolite2d.exe
+  - cd original
+  - ./nemolite2d.exe
+  - cd ..
 
 # TODO: run the CUDA ported version and compare the output files for equality.
