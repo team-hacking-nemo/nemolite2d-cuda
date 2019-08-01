@@ -1,5 +1,7 @@
 # NEMOLite2D CUDA
 
+[![Build Status](https://travis-ci.org/team-hacking-nemo/nemolite2d-cuda.svg?branch=master)](https://travis-ci.org/team-hacking-nemo/nemolite2d-cuda)
+
 This repository contains the code for the CUDA port of NEMOLite2D for the Sheffield GPU Hackathon 2019.
 
 ## Structure
