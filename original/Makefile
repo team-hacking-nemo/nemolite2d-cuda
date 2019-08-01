@@ -25,7 +25,7 @@ COMMON_MODULES = ${INF_LIB}
 all: $(EXECS)
 
 # Normal targets
-nemolite2d: 
+nemolite2d: inf_lib timer_lib
 	${MAKE} MODULE_LIST="nemolite2d.o ${COMMON_MODULES}" nemolite2d.exe
 
 timer_lib:
@@ -47,10 +47,21 @@ nemolite2d.o: $(COMMON_MODULES)
 %.o: %.F90
 	$(F90) $(F90FLAGS) -I${INF_INC} -I${TIMER_INC} -c $<
 
-clean: 
+# Cleaning up
+
+clean: clean_timer clean_inf
 	rm -f *.o *.mod *.MOD *~
 
-allclean: clean
+clean_timer:
+	${MAKE} -C ${TIMER_DIR} clean
+
+clean_inf:
+	${MAKE} -C ${INF_DIR} clean
+
+allclean: clean allclean_timer
 	rm -f *.exe
 	rm -rf *_wpl_dir
 	rm -f *.opt *.optrpt gnu_opt_report.txt
+
+allclean_timer:
+	${MAKE} -C ${TIMER_DIR} allclean

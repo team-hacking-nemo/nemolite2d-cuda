@@ -1,6 +1,5 @@
-# Top-level Makefile for PSycloneBench benchmarks.
-# Only supports those benchmarks that target the CPU (i.e. excluding
-# OpenACC, OpenCL and Maxeler.)
+# Top-level Makefile for NEMOLite2D port to CUDA.
+# Includes both original Fortan code and CUDA C port.
 #
 # Picks-up the compiler and compiler flags from environment
 # variables. See e.g. compiler_setup/gnu.sh
