@@ -2,14 +2,17 @@ PROGRAM nemolite2d
          !!! A Horizontal 2D hydrodynamic ocean model which
          !!   1) using structured grid
          !!   2) using direct data addressig structures
+         use, intrinsic::iso_c_binding, only : c_double, c_float 
          use dl_timer
          use field_mod,  only: field_checksum
          use gocean_mod, only: model_write_log
          IMPLICIT NONE
 
-         INTEGER,  PARAMETER :: sp = SELECTED_REAL_KIND(6, 37)
-         INTEGER,  PARAMETER :: dp = SELECTED_REAL_KIND(12, 307)
+         INTEGER,  PARAMETER :: sp = c_float 
+         INTEGER,  PARAMETER :: dp = c_double 
          INTEGER,  PARAMETER :: wp = dp
+
+         
 
          REAL(wp), PARAMETER :: pi    = 3.1415926535897932_wp  
          REAL(wp), PARAMETER :: g     = 9.80665_wp         ! gravity constant
