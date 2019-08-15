@@ -1,6 +1,7 @@
 # Build settings for gfortran compiler
 F90=gfortran
 CC=gcc
+NVCC=nvcc
 
 CFLAGS="-O3"
 F90FLAGS="-Wall -Wsurprising -Wuninitialized"
@@ -13,6 +14,8 @@ F90FLAGS+=" -march=core2 -mtune=core2"
 # limit the length of a line
 F90FLAGS+=" -ffree-line-length-none"
 #F90FLAGS = -O3
+
+NVCC_FLAGS=" -O3 -use_fast_math -arch=sm_35 --ptxas-options=-v" 
 
 OMPFLAGS=""
 OMPFLAGS+=" -fopenmp"
@@ -27,3 +30,6 @@ export OMPFLAGS
 export LDFLAGS
 export AR
 export CC
+export NVCC
+export NVCC_FLAGS
+

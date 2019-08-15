@@ -13,6 +13,9 @@ TIMER_LIB = ${TIMER_DIR}/dl_timer_lib.a
 INF_DIR = ${SHARED_DIR}/dl_esm_inf/finite_difference
 INF_INC = ${INF_DIR}/src
 INF_LIB = ${INF_DIR}/src/dl_esm_inf_fd.a
+NVCC_INC = /usr/local/cuda-8.0/include/ 
+NVCC_LIB = -L/usr/local/cuda-8.0/lib64/ -lcudart
+CUDA_OBJS = cuda_nemolite2d.o
 
 EXECS = nemolite2d
 
@@ -20,13 +23,13 @@ EXECS = nemolite2d
 # passed to the linker
 COMMON_MODULES = ${INF_LIB}
 
-.PHONY: all nemolite2d timer_lib inf_lib
+.PHONY: all nemolite2d cuda_nemolite2d timer_lib inf_lib
 
 all: $(EXECS)
 
 # Normal targets
 nemolite2d: inf_lib timer_lib
-	${MAKE} MODULE_LIST="nemolite2d.o ${COMMON_MODULES}" nemolite2d.exe
+	${MAKE} $(CUDA_OBJS) MODULE_LIST="nemolite2d.o ${COMMON_MODULES}" nemolite2d.exe
 
 timer_lib:
 	${MAKE} -C ${TIMER_DIR} sm_lib
@@ -36,16 +39,22 @@ inf_lib:
 
 nemolite2d.o: $(COMMON_MODULES)
 
+cuda_nemolite2d.o: $(COMMON_MODULES)
+	
+
 # Generic rules
 
 %.exe: $(MODULE_LIST)
-	$(F90) $(OMPFLAGS) -o $@ $(MODULE_LIST) $(TIMER_LIB) $(LDFLAGS)
+	$(F90) $(OMPFLAGS) -o $@ $(MODULE_LIST) $(TIMER_LIB) $(LDFLAGS) $(NVCC_LIB)
 
 %.o: %.f90
 	$(F90) $(F90FLAGS) -I${INF_INC} -I${TIMER_INC} -c $<
 
 %.o: %.F90
 	$(F90) $(F90FLAGS) -I${INF_INC} -I${TIMER_INC} -c $<
+
+%.o: %.cu
+	$(NVCC) $(NVCC_FLAGS) -I$(NVCC_INC) -c $<
 
 # Cleaning up
 
