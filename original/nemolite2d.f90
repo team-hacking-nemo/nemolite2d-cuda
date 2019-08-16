@@ -59,6 +59,14 @@ PROGRAM nemolite2d
          REAL(wp) :: rtmp1, rtmp2, rtmp3, rtmp4      !real temporary variables 
          integer :: idxt ! Index for main-loop timer
 
+         interface 
+           subroutine cudamomentum(x) bind(C, name='cuda_momentum' )
+             use, intrinsic::iso_c_binding, only : c_int
+             implicit none
+             integer(c_int) :: x
+           end subroutine
+         end interface
+
          !! read in model parameters
          CALL setup
 
