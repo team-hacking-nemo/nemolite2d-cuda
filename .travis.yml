@@ -69,15 +69,15 @@ before_install:
   - sudo apt-get install -y cuda-core-${CUDA_APT} cuda-cudart-dev-${CUDA_APT} cuda-cufft-dev-${CUDA_APT}
   - sudo apt-get clean
   - CUDA_HOME=/usr/local/cuda-${CUDA_SHORT}
-  - LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
   - PATH=${CUDA_HOME}/bin:${PATH}
   - sudo apt-get install gfortran
 
 script:
   - . compiler_setup/gnu.sh
-  - gcc --version
-  - gfortran --version
-  - nvcc --version
+  - . compiler_setup/cuda.sh
+  - echo "\nGCC Info:\n--------" && which gcc && gcc --version
+  - echo "GFortran Info\n-------------" && which gfortran && gfortran --version
+  - echo "\nNVCC Version\n------------" && which nvcc && nvcc --version
   - make
   - cd original
   - ./nemolite2d.exe

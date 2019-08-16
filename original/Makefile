@@ -13,8 +13,7 @@ TIMER_LIB = ${TIMER_DIR}/dl_timer_lib.a
 INF_DIR = ${SHARED_DIR}/dl_esm_inf/finite_difference
 INF_INC = ${INF_DIR}/src
 INF_LIB = ${INF_DIR}/src/dl_esm_inf_fd.a
-NVCC_INC = /usr/local/cuda-8.0/include/ 
-NVCC_LIB = -L/usr/local/cuda-8.0/lib64/ -lcudart
+NVCC_LIB = -lcudart
 CUDA_OBJS = cuda_nemolite2d.o
 
 EXECS = nemolite2d
@@ -54,7 +53,7 @@ cuda_nemolite2d.o: $(COMMON_MODULES)
 	$(F90) $(F90FLAGS) -I${INF_INC} -I${TIMER_INC} -c $<
 
 %.o: %.cu
-	$(NVCC) $(NVCC_FLAGS) -I$(NVCC_INC) -c $<
+	$(NVCC) $(NVCC_FLAGS) -c $<
 
 # Cleaning up
 
