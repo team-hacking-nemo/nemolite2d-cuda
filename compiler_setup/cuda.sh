@@ -12,7 +12,16 @@ command -v nvcc >/dev/null 2>&1 || {
 
 NVCC_PATH=$(which nvcc)
 CUDA_BIN=$(dirname "$NVCC_PATH")
-CUDA_DIR=$(dirname "$CUDA_BIN")
+CUDA_HOME=$(dirname "$CUDA_BIN")
 
-export C_INCLUDE_PATH="$CUDA_DIR/include/:$C_INCLUDE_PATH"
-export LD_LIBRARY_PATH="$CUDA_DIR/lib64/:$LD_LIBRARY_PATH"
+export CUDA_INC="$CUDA_HOME/include"
+export CUDA_LIB="$CUDA_HOME/lib64"
+
+export C_INCLUDE_PATH="$CUDA_INC:$C_INCLUDE_PATH"
+export LD_LIBRARY_PATH="$CUDA_LIB:$LD_LIBRARY_PATH"
+
+# Always using Volta GV100 (either Quadro or Tesla) that supports compute
+# capacity 7.0.
+export CUDA_ARCH=sm_70
+
+echo "CUDA home directory: $CUDA_HOME"
