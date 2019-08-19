@@ -390,12 +390,14 @@ CONTAINS
         end if
      end do
 
-     if(PRESENT(num_repeats) .AND. num_repeats < 1)then
-        write(ERR_UNIT, &
-             "('timer_register: ERROR: num_repeats must be > 1 but got ',I4)") &
-             num_repeats
-        idx = -1
-        return
+     if(PRESENT(num_repeats))then
+       if(num_repeats < 1)then
+         write(ERR_UNIT, &
+              "('timer_register: ERROR: num_repeats must be > 1 but got ',I4)") &
+              num_repeats
+         idx = -1
+         return
+       end if
      end if
 
      ! Create a new timer
