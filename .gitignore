@@ -1,3 +1,9 @@
+# Nvidia profiling output
+*.nvvp
+
+# Saved output
+output*.txt
+
 # Application output files
 *.dat
 
