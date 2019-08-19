@@ -11,9 +11,12 @@ all: nemolite_cpu
 # All manual targets for CPU versions of NEMOLite2D
 nemolite_cpu:
 	${MAKE} -C ./original
+	${MAKE} -C ./openacc
 
 clean:
 	${MAKE} -C ./original clean
+	${MAKE} -C ./openacc clean
 
 allclean:
 	${MAKE} -C ./original allclean
+	${MAKE} -C ./openacc allclean
