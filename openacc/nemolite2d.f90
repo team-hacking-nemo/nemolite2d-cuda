@@ -10,7 +10,7 @@ PROGRAM nemolite2d
 
          INTEGER,  PARAMETER :: sp = c_float 
          INTEGER,  PARAMETER :: dp = c_double 
-         INTEGER,  PARAMETER :: wp = sp
+         INTEGER,  PARAMETER :: wp = dp
 
          
 
