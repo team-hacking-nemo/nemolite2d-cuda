@@ -15,6 +15,8 @@ nemolite_cpu:
 
 clean:
 	${MAKE} -C ./original clean
+	${MAKE} -C ./openacc clean
 
 allclean:
 	${MAKE} -C ./original allclean
+	${MAKE} -C ./openacc allclean
