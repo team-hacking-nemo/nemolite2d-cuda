@@ -12,11 +12,14 @@ all: nemolite_cpu
 nemolite_cpu:
 	${MAKE} -C ./original
 	${MAKE} -C ./openacc
+	${MAKE} -C ./cuda
 
 clean:
 	${MAKE} -C ./original clean
 	${MAKE} -C ./openacc clean
+	${MAKE} -C ./cuda clean
 
 allclean:
 	${MAKE} -C ./original allclean
 	${MAKE} -C ./openacc allclean
+	${MAKE} -C ./cuda allclean
