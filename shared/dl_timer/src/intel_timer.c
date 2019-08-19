@@ -28,6 +28,7 @@ uint64_t getticks(void)
 #endif
 }
 
+#if defined(__i386__) || defined(__ia64__)
 /** Obtain the clock count using rdtscp instead of rdtsc. This is
   better than rdtsc since it ensures synchronisation of out-of-order
   instructions. This code provide by John D. McCalpin. */
@@ -41,3 +42,4 @@ unsigned long tacc_rdtscp(int *chip, int *core)
 
   return ((unsigned long)a) | (((unsigned long)d) << 32);;
 }
+#endif
