@@ -6,6 +6,9 @@
 *.log 
 *.csv
 
+# Nvidia profiling output
+*.nvvp
+
 # Application output files
 *.dat
 
