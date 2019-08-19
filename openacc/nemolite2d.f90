@@ -733,30 +733,37 @@ CONTAINS
           call timer_start(idxt, label='Next')
 
 ! kernel  un updating
+        !$acc kernels 
           DO jj = 1, jpj
             DO ji = 0, jpi
               un(ji,jj)   = ua(ji,jj)
             END DO
           END DO
+          !$acc end kernels 
 ! end of kernel sshn_u updating.
 
 ! kernel vn updating
+          !$acc kernels 
           DO jj = 0, jpj
             DO ji = 1, jpi
               vn(ji,jj)   = va(ji,jj)
             END DO
           END DO
+          !$acc end kernels 
 ! end kernel vn updating.
 
 ! kernel sshn updating
+          !$acc kernels 
           DO jj = 1, jpj
             DO ji = 1, jpi
               sshn(ji,jj) = ssha(ji,jj)
             END DO
           END DO
+          !$acc end kernels 
 ! end kernel sshn_u updating.
 
 ! kernel sshn_u updating
+          !$acc kernels 
           DO jj = 1, jpj
             DO ji = 0, jpi
               IF(pt(ji,jj) + pt(ji+1,jj) <= 0)  CYCLE                              !jump over non-computational domain
@@ -770,9 +777,11 @@ CONTAINS
               END IF
             END DO
           END DO
+          !$acc end kernels 
 ! end kernel sshn_u updating.
 
 ! kernel: sshn_v updating
+          !$acc kernels 
           DO jj = 0, jpj
             DO ji = 1, jpi
               IF(pt(ji,jj) + pt(ji,jj+1) <= 0)  CYCLE                              !jump over non-computational domain
@@ -786,6 +795,7 @@ CONTAINS
               END If
             END DO
           END DO
+          !$acc end kernels 
 ! end kernel sshn_v updating.
             
           call timer_stop(idxt)
