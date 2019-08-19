@@ -448,6 +448,7 @@ CONTAINS
           call timer_start(idxt, label='Momentum')
 
           ! u equation
+          !$acc kernels
           DO jj = 1, jpj
           DO ji = 1, jpi-1
 
@@ -535,7 +536,9 @@ CONTAINS
 !end kernel ua 
           END DO
           END DO
+          !$acc end kernels
 
+          !$acc kernels
           ! v equation
           DO jj = 1, jpj-1
           DO ji = 1, jpi
@@ -628,6 +631,7 @@ CONTAINS
 !end kernel ua calculation 
           END DO
           END DO
+          !$acc end kernels
 
           call timer_stop(idxt)
 
