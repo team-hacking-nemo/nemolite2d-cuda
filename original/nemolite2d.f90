@@ -60,10 +60,73 @@ PROGRAM nemolite2d
          integer :: idxt ! Index for main-loop timer
 
          interface 
-           subroutine cudamomentum(x) bind(C, name='cuda_momentum' )
-             use, intrinsic::iso_c_binding, only : c_int
+           subroutine callsteps( pi, g, omega, d2r, & 
+                      & pt, &
+                      & e1t, e2t, e1u, e2u, &
+                      & e1f, e2f, e1v, e2v, &
+                      & e12t, e12u, e12v, &
+                      & gphiu, gphiv, gphif,&
+                      & xt, yt, &
+                      & ht, hu, hv, hf, & 
+                      & sshb, sshb_u, sshb_v, &
+                      & sshn, sshn_u, sshn_v, &
+                      & ssha, ssha_u, ssha_v, &
+                      & un, vn, ua, va, &
+                      & jpiglo, jpjglo, jpi, jpj, &
+                      & jphgr_msh, &                
+                      & nit000, nitend, irecord, &
+                      & dx, dy, dep_const, &
+                      & rdt,             &
+                      & cbfr,       &
+                      & visc, &
+                      & istp, &                 
+                      & ji, jj, &                 
+                      & itmp1, itmp2, &        
+                      & rtmp1, rtmp2, rtmp3, rtmp4,   &
+                      & idxt ) bind(C, name='cuda_callsteps' )
+             use, intrinsic::iso_c_binding, only : c_int, c_float
+             use kind_params_mod, only : wp
              implicit none
-             integer(c_int) :: x
+               REAL(wp):: pi 
+               REAL(wp) :: g        
+               REAL(wp) :: omega 
+               REAL(wp) :: d2r      
+                                                                                  
+               INTEGER, INTENT( INOUT ) :: pt(:,:) 
+
+               REAL(wp), INTENT( INOUT ) :: e1t(:,:), e2t(:,:), e1u(:,:), e2u(:,:) 
+               REAL(wp), INTENT( INOUT ) :: e1f(:,:), e2f(:,:), e1v(:,:), e2v(:,:) 
+               REAL(wp), INTENT( INOUT ) :: e12t(:,:), e12u(:,:), e12v(:,:)
+
+               REAL(wp), INTENT( INOUT ) :: gphiu(:,:), gphiv(:,:), gphif(:,:)
+
+               REAL(wp), INTENT( INOUT ) :: xt(:,:), yt(:,:)
+
+
+               REAL(wp), INTENT( INOUT ) :: ht(:,:), hu(:,:), hv(:,:), hf(:,:) 
+
+               REAL(wp), INTENT( INOUT ) :: sshb(:,:), sshb_u(:,:), sshb_v(:,:)
+               REAL(wp), INTENT( INOUT ) :: sshn(:,:), sshn_u(:,:), sshn_v(:,:)
+               REAL(wp), INTENT( INOUT ) :: ssha(:,:), ssha_u(:,:), ssha_v(:,:)
+
+               REAL(wp), INTENT( INOUT ) :: un(:,:),  vn(:,:), ua(:,:),  va(:,:)
+
+               INTEGER  :: jpiglo, jpjglo, jpi, jpj        !dimensions of grid
+               INTEGER  :: jphgr_msh                       !type of grid
+               INTEGER  :: nit000, nitend, irecord         !start-end and record time steps
+
+               REAL(wp) :: dx, dy, dep_const               !regular grid size and constant depth
+               REAL(wp) :: rdt                             !time step
+                                                           
+               REAL(wp) :: cbfr                            !bottom friction coefficient
+               REAL(wp) :: visc                            !backgroud/constant viscosity 
+
+               INTEGER  :: istp                            !time stepping index
+               INTEGER  :: ji, jj                          !temporary loop index
+
+               INTEGER  :: itmp1, itmp2                    !integer temporary vars
+               REAL(wp) :: rtmp1, rtmp2, rtmp3, rtmp4      !real temporary variables 
+               integer :: idxt ! Index for main-loop timer
            end subroutine
          end interface
 
