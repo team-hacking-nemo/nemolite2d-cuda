@@ -1,13 +1,13 @@
 # Nvidia profiling output
 *.nvvp
 
-# Saved output
-output*.txt
+# Text files/log files
+*.txt
+*.log 
+*.csv
 
 # Application output files
 *.dat
-
-gnu_opt_report.txt
 
 # Prerequisites
 *.d
