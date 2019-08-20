@@ -28,7 +28,7 @@ all: $(EXECS)
 
 # Normal targets
 nemolite2d: inf_lib timer_lib
-	${MAKE} $(CUDA_OBJS) MODULE_LIST="nemolite2d.o ${COMMON_MODULES}" nemolite2d.exe
+	${MAKE} MODULE_LIST="$(CUDA_OBJS) nemolite2d.o ${COMMON_MODULES}" nemolite2d.exe
 
 timer_lib:
 	${MAKE} -C ${TIMER_DIR} sm_lib
@@ -39,7 +39,6 @@ inf_lib:
 nemolite2d.o: $(COMMON_MODULES)
 
 cuda_nemolite2d.o: $(COMMON_MODULES)
-	
 
 # Generic rules
 
