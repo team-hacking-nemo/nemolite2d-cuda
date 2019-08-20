@@ -6,6 +6,9 @@
 *.log 
 *.csv
 
+.env
+.venv
+
 # Nvidia profiling output
 *.nvvp
 
