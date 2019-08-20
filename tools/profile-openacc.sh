@@ -9,9 +9,10 @@ NAMELIST="namelist"
 EXECUTABLE="nemolite2d.exe"
 WORKING_DIR="."
 
-TIMELINE_FILE="timeline.nvvp"
-METRICS_FILE="metrics.nvvp"
-
+# Get the date time this was initiated.
+DATETIME=$(date '+%Y-%m-%d-%H%M%S')
+TIMELINE_FILE="$DATETIME-timeline.nvvp"
+METRICS_FILE="$DATETIME-metrics.nvvp"
 
 # help message fn.
 usage(){
@@ -22,21 +23,22 @@ usage(){
 profile(){
     metrics=$1
     # Log a messsage.
-    echo "Profiling $TARGET_NAMELIST usign $TARGET_DIR/$EXECUTABLE"
+    echo "Profiling $TARGET_NAMELIST using $TARGET_DIR/$EXECUTABLE"
 
     # Update the namelist file (symlink)
-    ln -s "$TARGET_DIR/$NAMELIST" "$WORKING_DIR/$TMP_NAMELIST"
+    rm -f "$WORKING_DIR/$NAMELIST"
+    ln -s "$TARGET_DIR/$TARGET_NAMELIST" "$WORKING_DIR/$NAMELIST"
 
     # Capture a timeline
-    nvprof -f -o "$TARGET_DIR/$TIMELINE_FILE" "./$TARGET_DIR/$EXECUTABLE"
+    nvprof -f -o "$TARGET_DIR/$TIMELINE_FILE" "$TARGET_DIR/$EXECUTABLE"
 
     # optionally capture full details
     if [ "$metrics" = "1" ]; then
-        nvprof -f -o "$TARGET_DIR/$METRICS_FILE" --analysis-metrics "./$TARGET_DIR/$EXECUTABLE"
+        nvprof -f -o "$TARGET_DIR/$METRICS_FILE" --analysis-metrics "$TARGET_DIR/$EXECUTABLE"
     fi
 
     # Revert the namelist file.
-#    rm "$WORKING_DIR/$NAMELIST"
+    rm "$WORKING_DIR/$NAMELIST"
 }
 
 # Check some usage and run the sript. 
@@ -54,6 +56,6 @@ while [ "$1" != "" ]; do
     esac
     shift
 done
-echo $metrics
+
 # Run the profile fn
 profile $metrics
