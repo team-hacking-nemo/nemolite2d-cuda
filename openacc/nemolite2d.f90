@@ -94,9 +94,9 @@ PROGRAM nemolite2d
 
          ! Compute and output some checksums for error checking
          call model_write_log("('ua checksum = ',E16.8)", &
-                              field_checksum(un(1:jpiglo,1:jpjglo)) )
+                              field_checksum(ua(1:jpiglo,1:jpjglo)) )
          call model_write_log("('va checksum = ',E16.8)", &
-                              field_checksum(vn(1:jpiglo,1:jpjglo)))
+                              field_checksum(va(1:jpiglo,1:jpjglo)))
 
          !! finalise the model run
          CALL finalisation
