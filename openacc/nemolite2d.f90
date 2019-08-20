@@ -94,9 +94,9 @@ PROGRAM nemolite2d
 
          ! Compute and output some checksums for error checking
          call model_write_log("('ua checksum = ',E16.8)", &
-                              field_checksum(ua(1:jpiglo,1:jpjglo)) )
+                              field_checksum(un(1:jpiglo,1:jpjglo)) )
          call model_write_log("('va checksum = ',E16.8)", &
-                              field_checksum(va(1:jpiglo,1:jpjglo)))
+                              field_checksum(vn(1:jpiglo,1:jpjglo)))
 
          !! finalise the model run
          CALL finalisation
@@ -647,10 +647,10 @@ CONTAINS
 !kernel v hpg 
 
             ! -linear bottom friction (implemented implicitly.)
-!kernel ua calculation 
+!kernel va calculation 
             va(ji,jj) = (vn(ji,jj) * (hv(ji,jj) + sshn_v(ji,jj)) + rdt * (adv + vis + cor + hpg) / e12v(ji,jj) ) / &
                    & ((hv(ji,jj) + ssha_v(ji,jj))) / (1.0_wp + cbfr * rdt) 
-!end kernel ua calculation 
+!end kernel va calculation 
           END DO
           END DO
           !$acc end loop
