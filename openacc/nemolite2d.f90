@@ -464,7 +464,7 @@ CONTAINS
 
           call timer_start(idxt, label='Momentum')
 
-          !$acc parallel default(none) copyout(ua, va) &
+          !$acc parallel default(none) copy(ua, va) &
           !$acc private(jj, jpj, ji, jpi, u_e, u_w, v_s, v_n, v_sc, v_nc, u_ec, u_wc, uu_e, uu_w, uu_s, uu_n, vv_e, vv_w, vv_s, vv_n, depe, depw, deps, depn, dudx_e, dudy_n, dvdx_e, dvdy_n, dudx_w, dudy_s, dvdx_w, dvdy_s, adv, vis, hpg, cor) &
           !$acc present(ssha_u, ssha_v, e1t, e2t, e1u, e2u, e1v, e2v, e1f, e2f, e12t, e12u, e12v, pt, gphiu, gphiv, gphif, xt, yt, ht, hu, hv, un, vn, sshn, sshn_u, sshn_v)
 
