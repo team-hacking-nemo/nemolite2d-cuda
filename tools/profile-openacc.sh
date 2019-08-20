@@ -42,7 +42,7 @@ profile(){
     ln -s "$TARGET_DIR/$TARGET_NAMELIST" "$WORKING_DIR/$NAMELIST"
 
     # Capture a timeline
-    timeline_command="nvprof -f -o $TARGET_DIR/$TIMELINE_FILE $TARGET_DIR/$EXECUTABLE"
+    timeline_command="nvprof -s -f -o $TARGET_DIR/$TIMELINE_FILE $TARGET_DIR/$EXECUTABLE"
     if [ "$DRYRUN" = "0" ]; then
         $timeline_command
     else
