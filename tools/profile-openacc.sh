@@ -27,7 +27,7 @@ profile(){
 
     TARGET_NAMELIST="namelist.$SCALE.profile"
     TIMELINE_FILE="$SCALE-$DATETIME-timeline.nvvp"
-    METRICS_FILE="$SCALE-metrics.nvvp"
+    METRICS_FILE="$SCALE-$DATETIME-metrics.nvvp"
     # Log a messsage.
     echo "Profiling $SCALE using $TARGET_DIR/$EXECUTABLE"
 
