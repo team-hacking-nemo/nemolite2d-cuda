@@ -840,7 +840,7 @@ CONTAINS
 
               !WRITE(1,'(2f20.3, 2f15.4, 2e18.3)')  &            
               !WRITE(1,'(f20.3,'','',f20.3,'','',f15.4,'','',f15.4,'','',f18.3,'','',f18.3)') &
-              write(1,'(6e16.7)') &
+              write(1,'(6e20.7e4)') &
                    & xt(ji,jj), yt(ji,jj), ht(ji,jj), sshn(ji,jj),rtmp1, rtmp2 
             END DO
             WRITE(1,*)
