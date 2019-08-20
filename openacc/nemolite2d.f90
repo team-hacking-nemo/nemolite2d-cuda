@@ -464,7 +464,7 @@ CONTAINS
 
           call timer_start(idxt, label='Momentum')
 
-          !$acc parallel default(none) copyout(ua, va) &
+          !$acc parallel default(none) copy(ua, va) &
           !$acc private(jj, jpj, ji, jpi, u_e, u_w, v_s, v_n, v_sc, v_nc, u_ec, u_wc, uu_e, uu_w, uu_s, uu_n, vv_e, vv_w, vv_s, vv_n, depe, depw, deps, depn, dudx_e, dudy_n, dvdx_e, dvdy_n, dudx_w, dudy_s, dvdx_w, dvdy_s, adv, vis, hpg, cor) &
           !$acc present(ssha_u, ssha_v, e1t, e2t, e1u, e2u, e1v, e2v, e1f, e2f, e12t, e12u, e12v, pt, gphiu, gphiv, gphif, xt, yt, ht, hu, hv, un, vn, sshn, sshn_u, sshn_v)
 
@@ -647,10 +647,10 @@ CONTAINS
 !kernel v hpg 
 
             ! -linear bottom friction (implemented implicitly.)
-!kernel ua calculation 
+!kernel va calculation 
             va(ji,jj) = (vn(ji,jj) * (hv(ji,jj) + sshn_v(ji,jj)) + rdt * (adv + vis + cor + hpg) / e12v(ji,jj) ) / &
                    & ((hv(ji,jj) + ssha_v(ji,jj))) / (1.0_wp + cbfr * rdt) 
-!end kernel ua calculation 
+!end kernel va calculation 
           END DO
           END DO
           !$acc end loop
@@ -840,7 +840,7 @@ CONTAINS
 
               !WRITE(1,'(2f20.3, 2f15.4, 2e18.3)')  &            
               !WRITE(1,'(f20.3,'','',f20.3,'','',f15.4,'','',f15.4,'','',f18.3,'','',f18.3)') &
-              write(1,'(6e16.7)') &
+              write(1,'(6e20.7e4)') &
                    & xt(ji,jj), yt(ji,jj), ht(ji,jj), sshn(ji,jj),rtmp1, rtmp2 
             END DO
             WRITE(1,*)
