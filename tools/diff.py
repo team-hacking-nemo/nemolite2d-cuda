@@ -40,6 +40,13 @@ def cli_args():
         help="Path to sample datfile(s)"
         )
     parser.add_argument(
+        "-e",
+        "--epsilon",
+        type=np.float64,
+        help="Epsilon value for floating point comparison.",
+        default=0.0
+        )
+    parser.add_argument(
         "-o",
         "--output",
         type=str,
@@ -51,6 +58,7 @@ def cli_args():
         action="store_true",
         help="force overwriting of --output file."
       )
+
 
     args = parser.parse_args()
     return args
@@ -94,8 +102,9 @@ def delta_df(a, b):
     return delta
 
 # Find rows with non-zero values in relevant columns.
-def nonzero_rows(df):
-    q = "{:} != 0 | {:} != 0 | {:} != 0".format(COL_SSH, COL_UV, COL_VV)
+# No longer corresponds to nnz, but rather the epsilon value
+def nonzero_rows(df, epsilon):
+    q = "{1} > {0} | {2} > {0} | {3} > {0}".format(epsilon, COL_SSH, COL_UV, COL_VV)
     nnz = df.query(q)
     return nnz
 
@@ -176,7 +185,7 @@ def main():
     df_delta = delta_df(df_reference, df_sample)
     
     df_sum = aggregate_columns(df_delta)
-    nnz_rows = nonzero_rows(df_delta)
+    nnz_rows = nonzero_rows(df_delta, args.epsilon)
 
     if args.output is not None:
         store_error_rows(args.output, df_reference, df_sample, nnz_rows)
