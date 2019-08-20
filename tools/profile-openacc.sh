@@ -7,13 +7,13 @@ TARGET_NAMELIST="namelist.128.profile"
 
 NAMELIST="namelist"
 EXECUTABLE="nemolite2d.exe"
-TMP_NAMELIST="namelist.tmpprofile"
+WORKING_DIR="."
 
 TIMELINE_FILE="timeline.nvvp"
 METRICS_FILE="metrics.nvvp"
 
 
-# help message fn. 
+# help message fn.
 usage(){
     echo "usage: $0 [-h] [-m|--metrics]]"
 }
@@ -25,19 +25,18 @@ profile(){
     echo "Profiling $TARGET_NAMELIST usign $TARGET_DIR/$EXECUTABLE"
 
     # Update the namelist file (symlink)
-    mv "$TARGET_DIR/$NAMELIST" "$TARGET_DIR/$TMP_NAMELIST"
-    ln -s "$TARGET_DIR/$TARGET_NAMELIST" "$TARGET_DIR/$NAMELIST"
+    ln -s "$TARGET_DIR/$NAMELIST" "$WORKING_DIR/$TMP_NAMELIST"
 
     # Capture a timeline
-    nvprof -o "$TARGET_DIR/$TIMELINE_FILE" ./"$EXECUTABLE"
+    nvprof -f -o "$TARGET_DIR/$TIMELINE_FILE" "./$TARGET_DIR/$EXECUTABLE"
 
     # optionally capture full details
     if [ "$metrics" = "1" ]; then
-        nvprof -o "$TARGET_DIR/$METRICS_FILE" --analysis-metrics ./"$EXECUTABLE"
+        nvprof -f -o "$TARGET_DIR/$METRICS_FILE" --analysis-metrics "./$TARGET_DIR/$EXECUTABLE"
     fi
 
     # Revert the namelist file.
-    mv "$TARGET_DIR/$TMP_NAMELIST" "$TARGET_DIR/$NAMELIST"
+#    rm "$WORKING_DIR/$NAMELIST"
 }
 
 # Check some usage and run the sript. 
