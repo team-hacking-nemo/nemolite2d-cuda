@@ -38,7 +38,6 @@ PROGRAM nemolite2d
 
          REAL(wp), ALLOCATABLE :: sshb(:,:), sshb_u(:,:), sshb_v(:,:)
          REAL(wp), ALLOCATABLE :: sshn(:,:), sshn_u(:,:), sshn_v(:,:)
-         ! These ssha* don't seem to be modified and ssha doesn't seem to be used.
          REAL(wp), ALLOCATABLE :: ssha(:,:), ssha_u(:,:), ssha_v(:,:)
 
          REAL(wp), ALLOCATABLE :: un(:,:),  vn(:,:), ua(:,:),  va(:,:)
@@ -66,10 +65,6 @@ PROGRAM nemolite2d
          !! allocate memory and read in or setup model grid 
          CALL grid
 
-         ! Copy in the grid variables
-         !$acc enter data &
-         !$acc copyin(ssha_u, ssha_v, e1t, e2t, e1u, e2u, e1v, e2v, e1f, e2f, e12t, e12u, e12v, pt, gphiu, gphiv, gphif, xt, yt, ht, hu, hv)
-
          !! setup model initial condition
          CALL initialisation
 
@@ -79,16 +74,11 @@ PROGRAM nemolite2d
          call timer_start(idxt, label='Time-stepping', &
                           num_repeats=INT(nitend-nit000+1,8))
 
-         !$acc enter data copyin(un, vn, sshn, sshn_u, sshn_v)
-
          !! time stepping 
          DO istp = nit000, nitend, 1
            !print*, 'istp == ', istp
            CALL step
          END DO
-
-         !$acc exit data copyout(un, vn, sshn, sshn_u, sshn_v)
-         !$acc exit data
 
          call timer_stop(idxt)
 
@@ -407,18 +397,11 @@ CONTAINS
 
           rtime = REAL(istp, wp) * rdt
 
-          ! These three kernels can happen async independently of each other.
           CALL continuity
           CALL momentum
           CALL bc(rtime)  ! open and solid boundary condition
-
-          ! 'Next' kernel updates the five output arrays, so they need updating on host & device.
           CALL next
-
-          IF(MOD(istp, irecord) == 0)THEN
-            !$acc update self(un, vn, sshn, sshn_u, sshn_v)
-            CALL output
-          END IF
+          IF(MOD(istp, irecord) == 0)  CALL output
 
         END SUBROUTINE step
 
@@ -464,13 +447,7 @@ CONTAINS
 
           call timer_start(idxt, label='Momentum')
 
-          !$acc parallel default(none) copy(ua, va) &
-          !$acc private(jj, jpj, ji, jpi, u_e, u_w, v_s, v_n, v_sc, v_nc, u_ec, u_wc, uu_e, uu_w, uu_s, uu_n, vv_e, vv_w, vv_s, vv_n, depe, depw, deps, depn, dudx_e, dudy_n, dvdx_e, dvdy_n, dudx_w, dudy_s, dvdx_w, dvdy_s, adv, vis, hpg, cor) &
-          !$acc present(ssha_u, ssha_v, e1t, e2t, e1u, e2u, e1v, e2v, e1f, e2f, e12t, e12u, e12v, pt, gphiu, gphiv, gphif, xt, yt, ht, hu, hv, un, vn, sshn, sshn_u, sshn_v)
-
           ! u equation
-          !$acc loop collapse(2)
-
           DO jj = 1, jpj
           DO ji = 1, jpi-1
 
@@ -558,9 +535,7 @@ CONTAINS
 !end kernel ua 
           END DO
           END DO
-          !$acc end loop
 
-          !$acc loop collapse(2)
           ! v equation
           DO jj = 1, jpj-1
           DO ji = 1, jpi
@@ -646,15 +621,13 @@ CONTAINS
             hpg = -g * (hv(ji,jj) + sshn_v(ji,jj)) * e1v(ji,jj) * (sshn(ji,jj+1) - sshn(ji,jj))
 !kernel v hpg 
 
-            ! -linear bottom friction (implemented implicitly.)
-!kernel va calculation 
+            ! -linear bottom friction (implemented implicitly.
+!kernel ua calculation 
             va(ji,jj) = (vn(ji,jj) * (hv(ji,jj) + sshn_v(ji,jj)) + rdt * (adv + vis + cor + hpg) / e12v(ji,jj) ) / &
                    & ((hv(ji,jj) + ssha_v(ji,jj))) / (1.0_wp + cbfr * rdt) 
-!end kernel va calculation 
+!end kernel ua calculation 
           END DO
           END DO
-          !$acc end loop
-          !$acc end parallel
 
           call timer_stop(idxt)
 
@@ -761,33 +734,26 @@ CONTAINS
 
 ! kernel  un updating   
           !$acc parallel            
-          
           !$acc loop collapse(2)
           DO jj = 1, jpj
             DO ji = 0, jpi
               un(ji,jj)   = ua(ji,jj)
             END DO
           END DO
-          !$acc end loop 
-          !$acc end parallel 
+          !$acc end loop
 ! end of kernel sshn_u updating.
 
-! kernel vn updating
-          !$acc parallel            
-          
+! kernel vn updating       
           !$acc loop collapse(2) 
           DO jj = 0, jpj
             DO ji = 1, jpi
               vn(ji,jj)   = va(ji,jj)
             END DO
           END DO
-          !$acc end loop 
-          !$acc end parallel 
+          !$acc end loop
 ! end kernel vn updating.
 
 ! kernel sshn updating
-          !$acc parallel
-
           !$acc loop collapse(2)
           DO jj = 1, jpj
             DO ji = 1, jpi
@@ -795,12 +761,9 @@ CONTAINS
             END DO
           END DO
           !$acc end loop 
-          !$acc end parallel 
 ! end kernel sshn_u updating.
 
-! kernel sshn_u updating
-          !$acc parallel            
-          
+! kernel sshn_u updating     
           !$acc loop collapse(2) 
           DO jj = 1, jpj
             DO ji = 0, jpi
@@ -815,13 +778,10 @@ CONTAINS
               END IF
             END DO
           END DO          
-          !$acc end loop 
-          !$acc end parallel 
+          !$acc end loop
 ! end kernel sshn_u updating.
 
-! kernel: sshn_v updating
-          !$acc parallel            
-          
+! kernel: sshn_v updating    
           !$acc loop collapse(2) 
           DO jj = 0, jpj
             DO ji = 1, jpi
@@ -835,11 +795,11 @@ CONTAINS
                 sshn_v(ji,jj) = sshn(ji,jj)
               END If
             END DO
-          END DO
-          !$acc end loop 
-          !$acc end parallel 
+          END DO 
+          !$acc end loop
 ! end kernel sshn_v updating.
-            
+
+          !$acc end parallel 
           call timer_stop(idxt)
 
         END SUBROUTINE next
@@ -865,7 +825,7 @@ CONTAINS
 
               !WRITE(1,'(2f20.3, 2f15.4, 2e18.3)')  &            
               !WRITE(1,'(f20.3,'','',f20.3,'','',f15.4,'','',f15.4,'','',f18.3,'','',f18.3)') &
-              write(1,'(6e20.7e4)') &
+              write(1,'(6e16.7)') &
                    & xt(ji,jj), yt(ji,jj), ht(ji,jj), sshn(ji,jj),rtmp1, rtmp2 
             END DO
             WRITE(1,*)
