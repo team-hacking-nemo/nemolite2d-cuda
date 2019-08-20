@@ -4,15 +4,18 @@
 # Picks-up the compiler and compiler flags from environment
 # variables. See e.g. compiler_setup/gnu.sh
 
-.PHONY: all nemolite_cpu
+.PHONY: original cuda openacc clean allclean
 
-all: nemolite_cpu
+# No default
 
-# All manual targets for CPU versions of NEMOLite2D
-nemolite_cpu:
+original:
 	${MAKE} -C ./original
-	${MAKE} -C ./openacc
+
+cuda: original
 	${MAKE} -C ./cuda
+
+openacc: original
+	${MAKE} -C ./openacc
 
 clean:
 	${MAKE} -C ./original clean
