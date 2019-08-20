@@ -5,6 +5,7 @@ cd "$(dirname "$0")"
 TARGET_DIR="../openacc"
 #TARGET_NAMELIST="namelist.128.profile"
 TARGET_NAMELIST="namelist.512.profile"
+#TARGET_NAMELIST="namelist.4096.profile"
 
 NAMELIST="namelist"
 EXECUTABLE="nemolite2d.exe"
