@@ -2,19 +2,23 @@
 # Simple bash script for lazy profiling. 
 cd "$(dirname "$0")"
 
+#NAMELIST_SIZE=128
+NAMELIST_SIZE=512
+#NAMELIST_SIZE=1024
+#NAMELIST_SIZE=4096
+
+
 TARGET_DIR="../openacc"
-#TARGET_NAMELIST="namelist.128.profile"
-TARGET_NAMELIST="namelist.512.profile"
-#TARGET_NAMELIST="namelist.4096.profile"
+TARGET_NAMELIST="namelist.$NAMELIST_SIZE.profile"
 
 NAMELIST="namelist"
 EXECUTABLE="nemolite2d.exe"
 WORKING_DIR="."
 
 # Get the date time this was initiated.
-DATETIME=$(date '+%Y-%m-%d-%H%M%S')
-TIMELINE_FILE="$DATETIME-timeline.nvvp"
-METRICS_FILE="$DATETIME-metrics.nvvp"
+DATETIME=$(date '+%Y%m%d-%H%M%S')
+TIMELINE_FILE="$NAMELIST_SIZE-$DATETIME-timeline.nvvp"
+METRICS_FILE="$NAMELIST_SIZE--metrics.nvvp"
 
 # help message fn.
 usage(){
