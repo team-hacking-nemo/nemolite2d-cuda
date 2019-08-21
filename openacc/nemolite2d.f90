@@ -738,8 +738,9 @@ CONTAINS
 ! kernel  un updating
         !$acc parallel default(none) &
         !$acc private(jj, jpj, ji, jpi) &
-        !$acc copyin(ua, va, ssha, ssha_u, ssha_v, e12u, e12v, e12t) &
-        !$acc present(un, vn, sshn, sshn_u, sshn_v, pt)
+        !$acc copyin(ua, va, ssha, ssha_u, ssha_v) &
+        !$acc copyout(un, vn, sshn, sshn_u, sshn_v) &
+        !$acc present(un, vn, sshn, sshn_u, sshn_v, pt, e12u, e12v, e12t)
         
         !$acc loop collapse(2)
         DO jj = 1, jpj
