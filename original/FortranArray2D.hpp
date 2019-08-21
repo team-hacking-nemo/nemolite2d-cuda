@@ -29,7 +29,7 @@ class FortranArray2D
     }
 };
 
-int main()
+int testFortranArray2D()
 {
   const int M = 3, N = 2;
 
