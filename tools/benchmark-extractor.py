@@ -212,9 +212,7 @@ def processed_data(data):
             "bcs_total",
             "bcs_average",
             "next_total",
-            "next_average"
-        ]
-        RAW_COLS = [
+            "next_average",
             "ua_checksum",
             "va_checksum",
         ]
