@@ -736,7 +736,11 @@ CONTAINS
         call timer_start(idxt, label='Next')
 
 ! kernel  un updating
-        !$acc parallel
+        !$acc parallel default(none) &
+        !$acc private(jj, jpj, ji, jpi) &
+        !$acc copyin(ua, va, ssha, ssha_u, ssha_v, e12u, e12v, e12t) &
+        !$acc present(un, vn, sshn, sshn_u, sshn_v, pt)
+        
         !$acc loop collapse(2)
         DO jj = 1, jpj
             DO ji = 0, jpi
