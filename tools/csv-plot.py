@@ -45,9 +45,24 @@ def cli_args():
         help="show the graph."
     )
     parser.add_argument(
+        "--bar",
+        action="store_true",
+        help="render a stacked bar chart rather than line figure."
+    )
+    parser.add_argument(
+        "--kernels",
+        action="store_true",
+        help="render time per kernel rather than total."
+    )
+    parser.add_argument(
         "--logy",
         action="store_true",
         help="log scale for y axis."
+    )
+    parser.add_argument(
+        "--sharey",
+        action="store_true",
+        help="share y axis."
     )
     parser.add_argument(
         "-f",
@@ -106,7 +121,9 @@ def parse_files(files):
     combined = pd.concat(dfs.values())
     return combined
 
-def plot(data, args):
+
+
+def line_plot(data, args):
     # Get the columns 
     columns = list(data.columns)
 
@@ -123,22 +140,21 @@ def plot(data, args):
     scales = list(data["scale"].unique())
 
     # Select a column to plot
-    
 
-    ycols = [
-        # "build",
-        # "scale",
-        "time_stepping_total",
-        # "time_stepping_average",
-        # "continuity_total",
-        # "continuity_average",
-        "momentum_total",
-        # "momentum_average",
-        # "bcs_total",
-        # "bcs_average",
-        # "next_total",
-        # "next_average",
-    ]
+    ycols = ["time_stepping_total"]    
+    if args.kernels:
+        ycols = [
+            # "time_stepping_total",
+            # "time_stepping_average",
+            "continuity_total",
+            # "continuity_average",
+            "momentum_total",
+            # "momentum_average",
+            "bcs_total",
+            # "bcs_average",
+            "next_total",
+            # "next_average",
+        ]
 
     valid_ycols = []
     for ycol in ycols:
@@ -155,7 +171,7 @@ def plot(data, args):
     # Plot the data
     sns.set(style="darkgrid")
 
-    markers = ["o", "s", "P", "^", "6", "X" ] 
+    markers = ["o", "s", "P", "^", "h", "X" ] 
     linestyles=["-", "--", ":"]
 
     fig, ax = plt.subplots(figsize=(16,9))
@@ -179,6 +195,114 @@ def plot(data, args):
     plt.xscale("linear")
     if args.logy:
         plt.yscale("log", basey=10)
+
+    # Save to disk?
+    if args.output is not None and (not os.path.exists(args.output) or args.force):
+        plt.savefig(args.output, dpi=150) 
+        print("Figure saved to {:}".format(args.output))
+
+    # Show on the screen?
+    if args.output is None or args.show == True:
+        plt.show()
+
+    return True
+
+
+def plot(data, args):
+    if args.bar:
+        return stackedbar_plot(data, args)
+    else:
+        return line_plot(data, args)
+
+def stackedbar_plot(data, args):
+    # Get the columns 
+    columns = list(data.columns)
+
+    # Get the builds.
+    if "build" not in columns:
+        print("Error: build column missing!")
+        return False 
+    builds = list(data["build"].unique())
+
+    # Get the Scales 
+    if "scale" not in columns:
+        print("Error: scale column missing!")
+        return False
+    scales = list(data["scale"].unique())
+
+    # Select a column to plot
+    
+
+    ycols = ["time_stepping_total"]    
+    if args.kernels:
+        ycols = [
+            # "time_stepping_total",
+            # "time_stepping_average",
+            "continuity_total",
+            # "continuity_average",
+            "momentum_total",
+            # "momentum_average",
+            "bcs_total",
+            # "bcs_average",
+            "next_total",
+            # "next_average",
+        ]
+
+    valid_ycols = []
+    for ycol in ycols:
+        if ycol not in columns:
+            print("Warning, selected column {:} not present".format(ycol))
+        else:
+            valid_ycols.append(ycol)
+
+    ycols = valid_ycols
+    if len(ycol) == 0:    
+        print("Warning, setting default ycol")
+        ycols = [columns[2]]
+
+    # Plot the data
+    sns.set(style="darkgrid")
+
+    markers = ["o", "s", "P", "^", "6", "X" ] 
+    linestyles=["-", "--", ":"]
+
+    xlocs = np.arange(len(scales))
+    barwidth = 0.5
+
+    fig, axes = plt.subplots(ncols=len(builds), figsize=(16,9), sharey=args.sharey)
+    fig.subplots_adjust(hspace=0.5, wspace=0.3)
+    maximums = []
+    for bindex, build in enumerate(builds):
+        ax = axes.flat[bindex] if len(builds) > 1 else axes
+        palette = sns.color_palette("husl", len(ycols))
+        # palette = sns.cubehelix_palette(len(ycols), start=bindex, dark=0.5, light=0.8, reverse=True)
+
+        linestyle = linestyles[bindex % len(linestyles)]
+        qdata = data.query("build == '{:}'".format(build))
+
+        ymaxes = []
+        ax.set_title(build)
+        prev_data = np.zeros(len(xlocs))
+        for yindex, ycol in enumerate(ycols):
+            sindex = bindex * len(builds) + yindex
+            marker = markers[sindex % len(markers)]
+            colour = palette[yindex % len(ycols)]
+            label="{:} {:}".format(build, ycol)
+            ax.bar(xlocs, qdata[ycol], color=colour, label=label, bottom=prev_data)
+            prev_data = prev_data + qdata[ycol]
+            ymaxes.append(max(qdata[ycol]))
+
+        ax.legend(loc='upper left')
+        ax.set_xlabel("scale")
+        ax.set_ylabel("time(seconds)")
+        maximums.append(sum(ymaxes))
+    plt.xticks(xlocs, set(qdata["scale"]))
+    plt.xscale("linear")
+    # plt.ylim(bottom=0, top=max(maximums))
+    
+    # Don't use logy for stacked bar, makes it look like all of the runtime is in the lowest block.
+    # if args.logy:
+        # plt.yscale("log", basey=10)
 
     # Save to disk?
     if args.output is not None and (not os.path.exists(args.output) or args.force):
