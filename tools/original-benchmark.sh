@@ -16,18 +16,19 @@ SCALES=(
 
 REPS=3
 
+# Get the date time this was initiated.
+DATETIME=$(date '+%Y%m%d-%H%M%S')
+
 TARGET_DIR="../original"
 WORKING_DIR="../benchmark/original"
-LOGDIR="../benchmark/original/logs"
-ARCHIVEDIR="../benchmark/original/archive"
+LOGDIR="../benchmark/original/logs-$DATETIME"
+ARCHIVEDIR="../benchmark/original/archive-$DATETIME"
 
 # Constants
 NAMELIST="namelist"
 EXECUTABLE="nemolite2d.exe"
 DATFILES="*.dat"
 
-# Get the date time this was initiated.
-DATETIME=$(date '+%Y%m%d-%H%M%S')
 
 # help message fn.
 usage(){
