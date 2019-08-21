@@ -118,22 +118,37 @@ def validate_args(args):
 
 def parse_files(files, scalelim):
     # Load each file into a data frame. 
-    dfs = {}
+    dfs = OrderedDict()
     for index, file in enumerate(files):
         df = pd.read_csv(file)
+
+
+        if scalelim is not None:
+            scalemin = scalelim[0]
+            scalemax = scalelim[1]
+            if scalemin <= scalemax:
+                df = df.query("scale >= {:} and scale <= {:}".format(scalemin, scalemax))
+            else:
+                print("Warning, scalemin greater than scale max.")
         dfs[file] = df
 
     # Combine dataframes
-    combined = pd.concat(dfs.values())
+    combined = pd.concat(dfs.values(), sort=False)
 
-    if scalelim is not None:
-        scalemin = scalelim[0]
-        scalemax = scalelim[1]
-        if scalemin <= scalemax:
-            combined = combined.query("scale >= {:} and scale <= {:}".format(scalemin, scalemax))
-        else:
-            print("Warning, scalemin greater than scale max.")
-    return combined
+    # Calculate additional values
+    dfs = post_process_dataframes(dfs)
+
+    return dfs, combined
+
+
+def print_speedup(individuals):
+    print("Total Speedup:")
+
+
+def speedup_plot(data, args):
+    # Given the data files, calculate the relative speedup.
+
+    pass
 
 
 
@@ -216,17 +231,39 @@ def line_plot(data, args):
         print("Figure saved to {:}".format(args.output))
 
     # Show on the screen?
-    if args.output is None or args.show == True:
+    if args.show == True:
         plt.show()
 
     return True
 
 
-def plot(data, args):
+def post_process_dataframes(dataframes):
+    COL_BLACKLIST = ["build", "scale"]
+
+    # Calculate speedup relative to the first file.
+    reference_df = list(dataframes.values())[0]
+
+    # For each other individual one, calcualte speedup per column
+
+    for k in list(dataframes.keys())[1:]:
+        df = dataframes[k]
+        dfcopy = df.copy()
+        for col in df.columns:
+            if col not in COL_BLACKLIST:
+                speedupcol="speedup_{:}".format(col)
+                dfcopy[speedupcol] = reference_df[col] / df[col]
+        dataframes[k] = dfcopy
+
+
+
+    return dataframes
+
+
+def plot(individuals, combined, args):
     if args.bar:
-        return stackedbar_plot(data, args)
+        return stackedbar_plot(combined, args)
     else:
-        return line_plot(data, args)
+        return line_plot(combined, args)
 
 def stackedbar_plot(data, args):
     # Get the columns 
@@ -324,7 +361,7 @@ def stackedbar_plot(data, args):
         print("Figure saved to {:}".format(args.output))
 
     # Show on the screen?
-    if args.output is None or args.show == True:
+    if args.show == True:
         plt.show()
 
     return True
@@ -338,10 +375,13 @@ def main():
         return False
 
     # Parse the files
-    data = parse_files(files, args.scale_minmax)
+    individuals, combined, = parse_files(files, args.scale_minmax)
 
     # Plot the data
-    plotted = plot(data, args)
+    plotted = plot(individuals, combined, args)
+
+    # Print the speedup
+    print_speedup(individuals)
 
     # Return the success of the function. True == success. 
     return plotted

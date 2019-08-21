@@ -214,9 +214,15 @@ def processed_data(data):
             "next_total",
             "next_average"
         ]
+        RAW_COLS = [
+            "ua_checksum",
+            "va_checksum",
+        ]
         processed = data.groupby(KEY_COLS)
 
         df_means = processed[MEAN_COLS].agg("mean")
+
+        # print(df_means[:,])
         return df_means
 
     else:
