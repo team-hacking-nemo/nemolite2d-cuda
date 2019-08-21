@@ -56,17 +56,17 @@ PROGRAM nemolite2d
     INTEGER(c_int) :: idxt ! Index for main-loop timer
 
     interface 
-      subroutine k_setup_model_params( jpi, jpj, 
-                                       dx, dy, dep_const, nit000, 
-                                       nitend, irecord, rdt, cbfr, visc ) bind(C,name='k_setup_model_params')
-        use, intrinsic::iso_c_binding, only c_int, c_float
+      subroutine k_setup_model_params( jpi, jpj, &
+                                     & dx, dy, dep_const, nit000, &
+                                     & nitend, irecord, rdt, cbfr, visc ) bind(C,name='k_setup_model_params')
+        use, intrinsic::iso_c_binding, only : c_int, c_float, c_double
         implicit none
           INTEGER(c_int), value :: jpi, jpj        !dimensions of grid
           INTEGER(c_int), value :: nit000, nitend, irecord         !start-end and record time steps
-          REAL(c_float), value :: dx, dy, dep_const               !regular grid size and constant depth
-          REAL(c_float), value :: rdt                             !time step
-          REAL(c_float), value :: cbfr                            !bottom friction coefficient
-          REAL(c_float), value :: visc                            !backgroud/constant viscosity
+          REAL(c_double), value :: dx, dy, dep_const               !regular grid size and constant depth
+          REAL(c_double), value :: rdt                             !time step
+          REAL(c_double), value :: cbfr                            !bottom friction coefficient
+          REAL(c_double), value :: visc                            !backgroud/constant viscosity
       end subroutine
     end interface
 
@@ -84,6 +84,8 @@ PROGRAM nemolite2d
 
     call timer_start(idxt, label='Time-stepping', &
                      num_repeats=INT(nitend - nit000 + 1, 8))
+
+    CALL k_setup_model_params( jpi, jpj, dx, dy, dep_const, nit000, nitend, irecord, rdt, cbfr, visc )
 
     !! time stepping
     DO istp = nit000, nitend, 1
@@ -392,7 +394,7 @@ CONTAINS
 
         rtime = REAL(istp, wp)*rdt
 
-        CALL cuda_momentum()
+        !CALL cuda_momentum_()
 
         CALL continuity
         CALL momentum
