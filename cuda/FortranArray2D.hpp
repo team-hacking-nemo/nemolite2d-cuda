@@ -4,11 +4,6 @@
 template < typename type, int row_start_idx, int col_start_idx >
 class FortranArray2D
 {
-  private:
-    const int n_rows;
-    const int n_cols;
-    void * const data;
-
   public:
     FortranArray2D(int row_end_idx, int col_end_idx )
       :
@@ -27,6 +22,11 @@ class FortranArray2D
     {
       return (i - row_start_idx) + (j - col_start_idx)*(this->n_rows);
     }
+
+  private:
+    const int n_rows;
+    const int n_cols;
+    void * const data;
 };
 
 int testFortranArray2D()
