@@ -65,11 +65,17 @@ def cli_args():
         help="share y axis."
     )
     parser.add_argument(
+        "--scale-minmax",
+        type=int,
+        nargs=2,
+        help="Apply lower/upper bounds to the scales shown"
+    )
+    parser.add_argument(
         "-f",
         "--force",
         action="store_true",
         help="force overwriting of --output file."
-      )
+    )
 
 
     args = parser.parse_args()
@@ -110,7 +116,7 @@ def validate_args(args):
 
     return True, valid_files
 
-def parse_files(files):
+def parse_files(files, scalelim):
     # Load each file into a data frame. 
     dfs = {}
     for index, file in enumerate(files):
@@ -119,6 +125,14 @@ def parse_files(files):
 
     # Combine dataframes
     combined = pd.concat(dfs.values())
+
+    if scalelim is not None:
+        scalemin = scalelim[0]
+        scalemax = scalelim[1]
+        if scalemin <= scalemax:
+            combined = combined.query("scale >= {:} and scale <= {:}".format(scalemin, scalemax))
+        else:
+            print("Warning, scalemin greater than scale max.")
     return combined
 
 
@@ -228,7 +242,7 @@ def stackedbar_plot(data, args):
     if "scale" not in columns:
         print("Error: scale column missing!")
         return False
-    scales = list(data["scale"].unique())
+    scales = sorted(list(data["scale"].unique()))
 
     # Select a column to plot
     
@@ -279,26 +293,26 @@ def stackedbar_plot(data, args):
 
         linestyle = linestyles[bindex % len(linestyles)]
         qdata = data.query("build == '{:}'".format(build))
+        # print(qdata["scale"])
 
         ymaxes = []
         ax.set_title(build)
         prev_data = np.zeros(len(xlocs))
         for yindex, ycol in enumerate(ycols):
+            coldata = list(qdata[ycol])
             sindex = bindex * len(builds) + yindex
             marker = markers[sindex % len(markers)]
             colour = palette[yindex % len(ycols)]
             label="{:} {:}".format(build, ycol)
-            ax.bar(xlocs, qdata[ycol], color=colour, label=label, bottom=prev_data)
-            prev_data = prev_data + qdata[ycol]
-            ymaxes.append(max(qdata[ycol]))
-
+            ax.bar(xlocs,coldata, color=colour, label=label, bottom=prev_data)
+            prev_data = prev_data + coldata
+            ymaxes.append(max(coldata))
         ax.legend(loc='upper left')
         ax.set_xlabel("scale")
         ax.set_ylabel("time(seconds)")
+        ax.set_xticks(xlocs)
+        ax.set_xticklabels(scales)
         maximums.append(sum(ymaxes))
-    plt.xticks(xlocs, set(qdata["scale"]))
-    plt.xscale("linear")
-    # plt.ylim(bottom=0, top=max(maximums))
     
     # Don't use logy for stacked bar, makes it look like all of the runtime is in the lowest block.
     # if args.logy:
@@ -324,7 +338,7 @@ def main():
         return False
 
     # Parse the files
-    data = parse_files(files)
+    data = parse_files(files, args.scale_minmax)
 
     # Plot the data
     plotted = plot(data, args)
