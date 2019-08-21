@@ -18,9 +18,9 @@ class FortranArray2D
       std::free( data );
     }
 
-    inline type operator()( int i, int j ) 
+    inline type& operator()( int i, int j ) 
     {
-      return (i - row_start_idx) + (j - col_start_idx)*(this->n_rows);
+      return this->data[ (i - row_start_idx) + (j - col_start_idx)*(this->n_rows) ];
     }
 
   private:
