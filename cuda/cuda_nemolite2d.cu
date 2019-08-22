@@ -194,7 +194,26 @@ __global__ void
 k_momentum();
 
 __global__ void
-k_next();
+k_next(const FortranArray2D<wp_t, 1, 1>& sshn,
+       const FortranArray2D<wp_t, 0, 1>& sshn_u,
+       const FortranArray2D<wp_t, 1, 0>& sshn_v,
+
+       const FortranArray2D<wp_t, 1, 1>& ssha,
+
+       const FortranArray2D<wp_t, 0, 1>& un,
+       const FortranArray2D<wp_t, 1, 0>& vn,
+
+       const FortranArray2D<wp_t, 0, 1>& ua,
+       const FortranArray2D<wp_t, 1, 0>& va,
+
+       const FortranArray2D<wp_t, 1, 1>& e12t,
+       const FortranArray2D<wp_t, 0, 1>& e12u,
+       const FortranArray2D<wp_t, 1, 0>& e12v,
+
+       const FortranArray2D<int, 0, 0>& pt,
+
+       const int jpi,
+       const int jpj);
 
 void
 finalise();
@@ -427,7 +446,29 @@ cuda_boundary_conditions_(wp_t rtime)
 void
 cuda_next_()
 {
-  // TODO:
+  const int jpi = model_params.jpi;
+  const int jpj = model_params.jpj;
+
+  k_next<<<jpi + 1, jpj + 1>>>(*simulation_vars.sshn,
+                               *simulation_vars.sshn_u,
+                               *simulation_vars.sshn_v,
+
+                               *simulation_vars.ssha,
+
+                               *simulation_vars.un,
+                               *simulation_vars.vn,
+
+                               *simulation_vars.ua,
+                               *simulation_vars.va,
+
+                               *grid_constants.e12t,
+                               *grid_constants.e12u,
+                               *grid_constants.e12v,
+
+                               *grid_constants.pt,
+
+                               jpi,
+                               jpj);
 }
 
 void
@@ -711,7 +752,73 @@ k_boundary_conditions(wp_t rtime,
 }
 
 __global__ void
-k_next()
+k_next(const FortranArray2D<wp_t, 1, 1>& sshn,
+       const FortranArray2D<wp_t, 0, 1>& sshn_u,
+       const FortranArray2D<wp_t, 1, 0>& sshn_v,
+
+       const FortranArray2D<wp_t, 1, 1>& ssha,
+
+       const FortranArray2D<wp_t, 0, 1>& un,
+       const FortranArray2D<wp_t, 1, 0>& vn,
+
+       const FortranArray2D<wp_t, 0, 1>& ua,
+       const FortranArray2D<wp_t, 1, 0>& va,
+
+       const FortranArray2D<wp_t, 1, 1>& e12t,
+       const FortranArray2D<wp_t, 0, 1>& e12u,
+       const FortranArray2D<wp_t, 1, 0>& e12v,
+
+       const FortranArray2D<int, 0, 0>& pt,
+
+       const int jpi,
+       const int jpj)
 {
-  // TODO:
+  int ji = threadIdx.x * blockIdx.x + blockDim.x;
+  int jj = threadIdx.y * blockIdx.y + blockDim.y;
+
+  if (ji > jpi || jj > jpj) {
+    return;
+  }
+
+  if (jj > 0) {
+    un(ji, jj) = ua(ji, jj);
+  }
+
+  if (ji > 0) {
+    vn(ji, jj) = va(ji, jj);
+  }
+
+  if (ji > 0 && jj > 0) {
+    sshn(ji, jj) = ssha(ji, jj);
+  }
+
+  if (jj > 0) {
+    if (pt(ji, jj) + pt(ji + 1, jj) <= 0) {
+      // This cell or it's +ve i-side neighbour is outside the computational
+      // domain.
+    } else if (pt(ji, jj) * pt(ji + 1, jj) > 0) {
+      const wp_t rtmp1 =
+        e12t(ji, jj) * sshn(ji, jj) + e12t(ji + 1, jj) * sshn(ji + 1, jj);
+      sshn_u(ji, jj) = 0.5 * rtmp1 / e12u(ji, jj);
+    } else if (pt(ji, jj) <= 0) {
+      sshn_u(ji, jj) = sshn(ji + 1, jj);
+    } else if (pt(ji + 1, jj) <= 0) {
+      sshn_u(ji, jj) = sshn(ji, jj);
+    }
+  }
+
+  if (ji > 0) {
+    if (pt(ji, jj) + pt(ji, jj + 1) <= 0) {
+      // This cell or it's +ve j-side neighbour is outside th computational
+      // domain.
+    } else if (pt(ji, jj) * pt(ji, jj + 1) > 0) {
+      const wp_t rtmp1 =
+        e12t(ji, jj) * sshn(ji, jj) + e12t(ji, jj + 1) * sshn(ji, jj + 1);
+      sshn_v(ji, jj) = 0.5 * rtmp1 / e12v(ji, jj);
+    } else if (pt(ji, jj) <= 0) {
+      sshn_v(ji, jj) = sshn(ji, jj + 1);
+    } else if (pt(ji, jj + 1) <= 0) {
+      sshn_v(ji, jj) = sshn(ji, jj);
+    }
+  }
 }
