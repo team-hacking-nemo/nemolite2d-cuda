@@ -533,7 +533,7 @@ cuda_boundary_conditions_(wp_t rtime)
                                               jpi,
                                               jpj);
 
-  cudaDeviceSynchronize();
+  CUDACHECK(cudaDeviceSynchronize());
 
   // Now swap the double buffered arrays.
   wp_t* const ua_buffered_data =
@@ -659,8 +659,7 @@ cuda_finalise_()
   delete simulation_vars.ua_buffer;
   delete simulation_vars.va_buffer;
 
-  cudaError_t cudaStatus = cudaDeviceReset();
-  assert(cudaStatus == cudaSuccess);
+  CUDACHECK(cudaDeviceReset());
 }
 
 __global__ void
