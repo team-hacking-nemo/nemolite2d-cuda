@@ -2,15 +2,12 @@ PROGRAM nemolite2d
     !!! A Horizontal 2D hydrodynamic ocean model which
     !!   1) using structured grid
     !!   2) using direct data addressig structures
-    use, intrinsic::iso_c_binding, only: c_int, c_double, c_float
+    use, intrinsic::iso_c_binding, only: c_int
+    use kind_params_mod, only : wp
     use dl_timer
     use field_mod, only: field_checksum
     use gocean_mod, only: model_write_log
     IMPLICIT NONE
-
-    INTEGER(c_int), PARAMETER :: sp = c_float
-    INTEGER(c_int), PARAMETER :: dp = c_double
-    INTEGER(c_int), PARAMETER :: wp = dp
 
     REAL(wp), PARAMETER :: pi = 3.1415926535897932_wp
     REAL(wp), PARAMETER :: g = 9.80665_wp         ! gravity constant
@@ -56,22 +53,23 @@ PROGRAM nemolite2d
     INTEGER(c_int) :: idxt ! Index for main-loop timer
 
     interface 
-    subroutine cuda_setup_model(jpi, jpj, dx, dy, dep_const, nit000, nitend, irecord, rdt, cbfr, visc ) bind(C,name="cuda_setup_model_params_")
-      use, intrinsic::iso_c_binding, only : c_int, c_float, c_double
-      implicit none
-        integer(c_int), value :: jpi
-        integer(c_int), value :: jpj
-        real(c_double), value :: dx
-        real(c_double), value :: dy
-        real(c_double), value :: dep_const
-        integer(c_int), value :: nit000
-        integer(c_int), value :: nitend
-        integer(c_int), value :: irecord
-        real(c_double), value :: rdt
-        real(c_double), value :: cbfr
-        real(c_double), value :: visc
-    end subroutine
-  end interface
+      subroutine cuda_setup_model( jpi, jpj, dx, dy, dep_const, nit000, nitend, irecord, rdt, cbfr, visc ) bind(C,name="cuda_setup_model_params_")
+        use kind_params_mod, only : wp
+        use, intrinsic::iso_c_binding, only : c_int        
+        implicit none
+          integer(c_int), value :: jpi
+          integer(c_int), value :: jpj
+          real(wp), value :: dx
+          real(wp), value :: dy
+          real(wp), value :: dep_const
+          integer(c_int), value :: nit000
+          integer(c_int), value :: nitend
+          integer(c_int), value :: irecord
+          real(wp), value :: rdt
+          real(wp), value :: cbfr
+          real(wp), value :: visc
+      end subroutine
+    end interface
 
     !! read in model parameters
     CALL setup
