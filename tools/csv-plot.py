@@ -51,6 +51,11 @@ def cli_args():
         help="render a stacked bar chart rather than line figure."
     )
     parser.add_argument(
+        "--speedup",
+        action="store_true",
+        help="speedup lineplot"
+    )
+    parser.add_argument(
         "--kernels",
         action="store_true",
         help="render time per kernel rather than total."
@@ -70,6 +75,11 @@ def cli_args():
         type=int,
         nargs=2,
         help="Apply lower/upper bounds to the scales shown"
+    )
+    parser.add_argument(
+        "--print-speedup",
+        action="store_true",
+        help="print speedup table to console"
     )
     parser.add_argument(
         "-f",
@@ -133,11 +143,12 @@ def parse_files(files, scalelim):
                 print("Warning, scalemin greater than scale max.")
         dfs[file] = df
 
+    # Calculate additional values
+    dfs = post_process_dataframes(dfs)
+
     # Combine dataframes
     combined = pd.concat(dfs.values(), sort=False)
 
-    # Calculate additional values
-    dfs = post_process_dataframes(dfs)
 
     return dfs, combined
 
@@ -167,9 +178,84 @@ def print_speedup(individuals):
 
 
 def speedup_plot(data, args):
-    # Given the data files, calculate the relative speedup.
+    # Get the columns 
+    columns = list(data.columns)
 
-    pass
+    # Get the builds.
+    if "build" not in columns:
+        print("Error: build column missing!")
+        return False 
+    builds = list(data["build"].unique())
+
+    # Get the Scales 
+    if "scale" not in columns:
+        print("Error: scale column missing!")
+        return False
+    scales = list(data["scale"].unique())
+
+    # Select a column to plot
+
+    ycols = ["speedup_time_stepping_total"]    
+    if args.kernels:
+        ycols = [
+            # "speedup_time_stepping_total",
+            "speedup_continuity_total",
+            "speedup_momentum_total",
+            "speedup_bcs_total",
+            "speedup_next_total",
+        ]
+
+    valid_ycols = []
+    for ycol in ycols:
+        if ycol not in columns:
+            print("Warning, selected column {:} not present".format(ycol))
+        else:
+            valid_ycols.append(ycol)
+
+    ycols = valid_ycols
+    if len(ycol) == 0:    
+        print("Warning, setting default ycol")
+        ycols = [columns[2]]
+
+    # Plot the data
+    sns.set(style="darkgrid")
+
+    markers = ["o", "s", "P", "^", "h", "X" ] 
+    linestyles=["-", "--", ":"]
+
+    fig, ax = plt.subplots(figsize=(16,9))
+    for bindex, build in enumerate(builds[1:]):
+        palette = sns.color_palette("husl", len(ycols))
+        # palette = sns.cubehelix_palette(len(ycols), start=bindex, dark=0.5, light=0.8, reverse=True)
+
+        linestyle = linestyles[bindex % len(linestyles)]
+        qdata = data.query("build == '{:}'".format(build))
+
+        for yindex, ycol in enumerate(ycols):
+            sindex = bindex * len(builds) + yindex
+            marker = markers[sindex % len(markers)]
+            colour = palette[yindex % len(ycols)]
+            label="{:} {:}".format(build, ycol)
+            ax.plot(qdata["scale"], qdata[ycol], marker=marker, linestyle=linestyle, color=colour, label=label)
+
+    plt.legend(loc='upper left')
+    plt.xlabel("scale")
+    plt.ylabel("Speedup")
+    plt.xscale("linear")
+    ax.set_ylim(bottom=0, top=None)
+    if args.logy:
+        plt.yscale("log", basey=10)
+
+    # Save to disk?
+    if args.output is not None and (not os.path.exists(args.output) or args.force):
+        plt.savefig(args.output, dpi=150) 
+        print("Figure saved to {:}".format(args.output))
+
+    # Show on the screen?
+    if args.show == True:
+        plt.show()
+
+    return True
 
 
 
@@ -266,6 +352,16 @@ def post_process_dataframes(dataframes):
 
     # For each other individual one, calcualte speedup per column
 
+    # process the first data frame
+    for k in list(dataframes.keys())[0:1]:
+        df = dataframes[k]
+        dfcopy = df.copy()
+        for col in df.columns:
+            if col not in COL_BLACKLIST:
+                speedupcol="speedup_{:}".format(col)
+                dfcopy[speedupcol] = 1.0
+            dataframes[k] = dfcopy
+
     for k in list(dataframes.keys())[1:]:
         df = dataframes[k]
         dfcopy = df.copy()
@@ -283,6 +379,8 @@ def post_process_dataframes(dataframes):
 def plot(individuals, combined, args):
     if args.bar:
         return stackedbar_plot(combined, args)
+    elif args.speedup:
+        return speedup_plot(combined, args)
     else:
         return line_plot(combined, args)
 
@@ -402,7 +500,8 @@ def main():
     plotted = plot(individuals, combined, args)
 
     # Print the speedup
-    print_speedup(individuals)
+    if args.print_speedup:
+        print_speedup(individuals)
 
     # Return the success of the function. True == success. 
     return plotted
