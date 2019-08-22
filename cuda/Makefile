@@ -44,7 +44,7 @@ cuda_nemolite2d.o: $(COMMON_MODULES) $(CUDA_HEADERS)
 # Generic rules
 
 %.exe: $(MODULE_LIST)
-	$(F90) $(OMPFLAGS) -o $@ $(MODULE_LIST) $(TIMER_LIB) $(LDFLAGS) -L$(CUDA_LIB) $(LDFLAGS)
+	$(F90) $(OMPFLAGS) -o $@ $(MODULE_LIST) $(TIMER_LIB) $(LDFLAGS) $(CUDA_LDFLAGS) -L$(CUDA_LIB)
 
 %.o: %.f90
 	$(F90) $(F90FLAGS) -I${INF_INC} -I${TIMER_INC} -c $<
