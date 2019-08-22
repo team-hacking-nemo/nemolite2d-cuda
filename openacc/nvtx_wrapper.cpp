@@ -1,4 +1,5 @@
 #include <nvToolsExt.h>
+#pragma once
 /*
  * Utility routine for marking a range with both
  * a message and a color from a single function call.

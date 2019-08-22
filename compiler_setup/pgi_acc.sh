@@ -3,8 +3,8 @@
 # Fortran compiler
 F90=pgf90
 # C compiler
-CC=pgc++
-CFLAGS=" -I /opt/pgi/linux86-64-llvm/2019/cuda/10.0/include/ "
+CXX=pgc++
+CXXFLAGS+=" -I /opt/pgi/linux86-64-llvm/2019/cuda/10.0/include/ "
 # Fortran compiler flags
 F90FLAGS="-O3 -Minfo=all"
 #F90FLAGS"+=" -fcheck=all -fbacktrace -ffpe-trap=invalid -g -O0"
@@ -34,6 +34,6 @@ export F90
 export F90FLAGS
 export LDFLAGS
 export AR
-export CC
-export CFLAGS
+export CXX
+export CXXFLAGS
 
