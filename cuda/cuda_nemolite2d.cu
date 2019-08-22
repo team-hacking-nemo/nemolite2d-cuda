@@ -211,14 +211,13 @@ extern "C"
 GridConstants grid_constants;
 SimulationVariables simulation_vars;
 
-ModelParameters host_model_params;
-ModelParameters* device_model_params;
+ModelParameters model_params;
 
 void
 cuda_initialise_grid_()
 {
-  const int jpi = host_model_params.jpi;
-  const int jpj = host_model_params.jpj;
+  const int jpi = model_params.jpi;
+  const int jpj = model_params.jpj;
 
   if (jpi == 0 || jpj == 0) {
     fprintf(stderr,
@@ -311,10 +310,12 @@ cuda_initialise_grid_()
                                           jpi,
                                           jpj,
 
-                                          host_model_params.dx,
-                                          host_model_params.dy,
+                                          model_params.dx,
+                                          model_params.dy,
 
-                                          host_model_params.dep_const);
+                                          model_params.dep_const);
+
+  cudaDeviceSynchronize();
 }
 
 __global__ void
@@ -458,7 +459,7 @@ cuda_setup_model_params_(int jpi,
 {
   printf("[CUDA](Host) Initialising model params.\n");
 
-  host_model_params = {
+  model_params = {
     .jpi = jpi,
     .jpj = jpj,
     .dx = dx,
@@ -471,17 +472,6 @@ cuda_setup_model_params_(int jpi,
     .cbfr = cbfr,
     .visc = visc,
   };
-
-  cudaError_t cudaStatus;
-
-  cudaStatus = cudaMalloc(&device_model_params, sizeof(ModelParameters));
-  assert(cudaStatus == cudaSuccess);
-
-  cudaStatus = cudaMemcpy(device_model_params,
-                          &host_model_params,
-                          sizeof(ModelParameters),
-                          cudaMemcpyHostToDevice);
-  assert(cudaStatus == cudaSuccess);
 }
 
 __global__ void
