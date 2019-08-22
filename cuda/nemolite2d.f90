@@ -90,6 +90,8 @@ PROGRAM nemolite2d
     call timer_start(idxt, label='Time-stepping', &
                      num_repeats=INT(nitend - nit000 + 1, 8))
 
+    CALL cuda_setup_model( jpi, jpj, dx, dy, dep_const, nit000, nitend, irecord, rdt, cbfr, visc )
+
     !! time stepping
     DO istp = nit000, nitend, 1
         !print*, 'istp == ', istp
@@ -412,8 +414,6 @@ CONTAINS
         REAL(wp) :: rtime
 
         rtime = REAL(istp, wp)*rdt
-
-        CALL cuda_momentum()
 
         CALL continuity
         CALL momentum
