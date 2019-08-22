@@ -64,7 +64,8 @@ PROGRAM nemolite2d
 
     ! Copy in the grid variables
     !$acc enter data &
-    !$acc copyin(ssha_u, ssha_v, e1t, e2t, e1u, e2u, e1v, e2v, e1f, e2f, e12t, e12u, e12v, pt, gphiu, gphiv, gphif, xt, yt, ht, hu, hv) &
+    !$acc copyin(ssha_u, ssha_v, e1t, e2t, e1u, e2u, e1v, e2v, e1f, e2f, e12t, e12u, e12v) &
+    !$acc copyin(pt, gphiu, gphiv, gphif, xt, yt, ht, hu, hv, rdt, cbfr) &
     !$acc create(ssha)
 
     !! setup model initial condition
