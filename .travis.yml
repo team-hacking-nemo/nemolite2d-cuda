@@ -66,14 +66,15 @@ before_install:
   - sudo apt-get install gfortran
 
 script:
+  # Build original version
   - . compiler_setup/gnu.sh
+  - echo "\nGCC Info:\n--------" && which gcc && gcc --version
+  - echo "GFortran Info\n-------------" && which gfortran && gfortran --version
+  - make original
+
+  # Build CUDA version
   - . compiler_setup/cuda.sh
   - echo "\nGCC Info:\n--------" && which gcc && gcc --version
   - echo "GFortran Info\n-------------" && which gfortran && gfortran --version
   - echo "\nNVCC Version\n------------" && which nvcc && nvcc --version
-  - make
-  - cd original
-  - ./nemolite2d.exe
-  - cd ..
-
-# TODO: run the CUDA ported version and compare the output files for equality.
+  - make cuda
