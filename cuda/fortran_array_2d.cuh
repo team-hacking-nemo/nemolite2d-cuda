@@ -48,6 +48,13 @@ public:
     cudaMemcpy(out_data, device_data, data_size, cudaMemcpyDeviceToHost);
   }
 
+  __host__ type* get_device_data_ptr() { return this->device_data; }
+
+  __host__ void set_device_data_ptr(type* new_device_data_ptr)
+  {
+    this->device_data = new_device_data_ptr;
+  }
+
   __device__ inline type& operator()(const int i, const int j) const
   {
     return this->device_data[(i - row_start_idx) +
