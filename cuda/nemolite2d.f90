@@ -2,22 +2,22 @@ PROGRAM nemolite2d
     !!! A Horizontal 2D hydrodynamic ocean model which
     !!   1) using structured grid
     !!   2) using direct data addressig structures
-    use, intrinsic::iso_c_binding, only: c_double, c_float
+    use, intrinsic::iso_c_binding, only: c_int, c_double, c_float
     use dl_timer
     use field_mod, only: field_checksum
     use gocean_mod, only: model_write_log
     IMPLICIT NONE
 
-    INTEGER, PARAMETER :: sp = c_float
-    INTEGER, PARAMETER :: dp = c_double
-    INTEGER, PARAMETER :: wp = dp
+    INTEGER(c_int), PARAMETER :: sp = c_float
+    INTEGER(c_int), PARAMETER :: dp = c_double
+    INTEGER(c_int), PARAMETER :: wp = dp
 
     REAL(wp), PARAMETER :: pi = 3.1415926535897932_wp
     REAL(wp), PARAMETER :: g = 9.80665_wp         ! gravity constant
     REAL(wp), PARAMETER :: omega = 7.292116e-05_wp    ! earth rotation speed (s^(-1))
     REAL(wp), PARAMETER :: d2r = pi/180._wp       ! degree to radian
 
-    INTEGER, ALLOCATABLE :: pt(:, :)     ! properties of t-cells
+    INTEGER(c_int), ALLOCATABLE :: pt(:, :)     ! properties of t-cells
     ! 1: water cell within computational domain
     ! 0: land cell
     !-1: water cell outside computational domain
@@ -38,9 +38,9 @@ PROGRAM nemolite2d
 
     REAL(wp), ALLOCATABLE :: un(:, :), vn(:, :), ua(:, :), va(:, :)
 
-    INTEGER  :: jpiglo, jpjglo, jpi, jpj        !dimensions of grid
-    INTEGER  :: jphgr_msh                       !type of grid
-    INTEGER  :: nit000, nitend, irecord         !start-end and record time steps
+    INTEGER(c_int)  :: jpiglo, jpjglo, jpi, jpj        !dimensions of grid
+    INTEGER(c_int)  :: jphgr_msh                       !type of grid
+    INTEGER(c_int)  :: nit000, nitend, irecord         !start-end and record time steps
 
     REAL(wp) :: dx, dy, dep_const               !regular grid size and constant depth
     REAL(wp) :: rdt                             !time step
@@ -48,12 +48,30 @@ PROGRAM nemolite2d
     REAL(wp) :: cbfr                            !bottom friction coefficient
     REAL(wp) :: visc                            !backgroud/constant viscosity
 
-    INTEGER  :: istp                            !time stepping index
-    INTEGER  :: ji, jj                          !temporary loop index
+    INTEGER(c_int)  :: istp                            !time stepping index
+    INTEGER(c_int)  :: ji, jj                          !temporary loop index
 
-    INTEGER  :: itmp1, itmp2                    !integer temporary vars
+    INTEGER(c_int)  :: itmp1, itmp2                    !INTEGER(c_int) temporary vars
     REAL(wp) :: rtmp1, rtmp2, rtmp3, rtmp4      !real temporary variables
-    integer :: idxt ! Index for main-loop timer
+    INTEGER(c_int) :: idxt ! Index for main-loop timer
+
+    interface 
+    subroutine cuda_setup_model(jpi, jpj, dx, dy, dep_const, nit000, nitend, irecord, rdt, cbfr, visc ) bind(C,name="cuda_setup_model_params_")
+      use, intrinsic::iso_c_binding, only : c_int, c_float, c_double
+      implicit none
+        integer(c_int), value :: jpi
+        integer(c_int), value :: jpj
+        real(c_double), value :: dx
+        real(c_double), value :: dy
+        real(c_double), value :: dep_const
+        integer(c_int), value :: nit000
+        integer(c_int), value :: nitend
+        integer(c_int), value :: irecord
+        real(c_double), value :: rdt
+        real(c_double), value :: cbfr
+        real(c_double), value :: visc
+    end subroutine
+  end interface
 
     !! read in model parameters
     CALL setup
@@ -63,6 +81,8 @@ PROGRAM nemolite2d
 
     !! setup model initial condition
     CALL initialisation
+
+    CALL cuda_initialise_grid
 
     istp = 0
     CALL output
@@ -87,6 +107,8 @@ PROGRAM nemolite2d
     !! finalise the model run
     CALL finalisation
 
+    CALL cuda_finalise
+
     WRITE (*, *) 'Simulation finished!!'
 !-----------------------------------
 CONTAINS
@@ -94,7 +116,7 @@ CONTAINS
 !+++++++++++++++++++++++++++++++++++
 
     SUBROUTINE setup
-        INTEGER :: ios
+        INTEGER(c_int) :: ios
 
         !! Read in model setup parameters
         NAMELIST /namctl/ jpiglo, jpjglo, jphgr_msh, &
@@ -135,6 +157,20 @@ CONTAINS
 
         jpi = jpiglo
         jpj = jpjglo
+
+        call cuda_setup_model( &
+            & jpi, &
+            & jpj, &
+            & dx, &
+            & dy, &
+            & dep_const, &
+            & nit000, &
+            & nitend, &
+            & irecord, &
+            & rdt, &
+            & cbfr, &
+            & visc &
+        & )
 
         CLOSE (1)
 
@@ -284,7 +320,7 @@ CONTAINS
 
     SUBROUTINE allocation
         !! Read in model setup parameters and allocate working arrays
-        INTEGER :: ierr(11)
+        INTEGER(c_int) :: ierr(11)
         REAL(wp) :: init_val
 
         ALLOCATE (e1t(jpi, jpj), e2t(jpi, jpj), e1u(0:jpi, jpj), e2u(0:jpi, jpj), STAT=ierr(1))
@@ -377,6 +413,8 @@ CONTAINS
 
         rtime = REAL(istp, wp)*rdt
 
+        CALL cuda_momentum()
+
         CALL continuity
         CALL momentum
         CALL bc(rtime)  ! open and solid boundary condition
@@ -389,7 +427,7 @@ CONTAINS
 
     SUBROUTINE continuity
         implicit none
-        integer :: idxt
+        INTEGER(c_int) :: idxt
 
         call timer_start(idxt, label='Continuity')
 
@@ -423,7 +461,7 @@ CONTAINS
         REAL(wp) :: dudx_w, dudy_s, dvdx_w, dvdy_s
 
         REAL(wp) :: adv, vis, hpg, cor
-        integer :: idxt
+        INTEGER(c_int) :: idxt
 
         call timer_start(idxt, label='Momentum')
 
@@ -618,8 +656,8 @@ CONTAINS
         implicit none
         REAL(wp), INTENT(IN) :: rtime
         REAL(wp) :: amp_tide, omega_tide
-        INTEGER :: jiu, jiv
-        integer :: idxt
+        INTEGER(c_int) :: jiu, jiv
+        INTEGER(c_int) :: idxt
 
         call timer_start(idxt, label='BCs')
 
@@ -703,7 +741,7 @@ CONTAINS
 
     SUBROUTINE next
         implicit none
-        integer :: idxt
+        INTEGER(c_int) :: idxt
         ! update the now-velocity and ssh
 
         call timer_start(idxt, label='Next')
@@ -801,7 +839,7 @@ CONTAINS
 !+++++++++++++++++++++++++++++++++++
 
     SUBROUTINE finalisation
-        INTEGER :: ierr(11)
+        INTEGER(c_int) :: ierr(11)
 
         DEALLOCATE (e1t, e2t, e1u, e2u, STAT=ierr(1))
         DEALLOCATE (e1f, e2f, e1v, e2v, STAT=ierr(2))

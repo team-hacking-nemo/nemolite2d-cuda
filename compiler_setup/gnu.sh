@@ -15,8 +15,6 @@ F90FLAGS+=" -march=core2 -mtune=core2"
 F90FLAGS+=" -ffree-line-length-none"
 #F90FLAGS = -O3
 
-NVCC_FLAGS=" -O3 -use_fast_math -arch=sm_35 --ptxas-options=-v" 
-
 OMPFLAGS=""
 OMPFLAGS+=" -fopenmp"
 

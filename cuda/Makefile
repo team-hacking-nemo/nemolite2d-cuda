@@ -13,8 +13,9 @@ TIMER_LIB = ${TIMER_DIR}/dl_timer_lib.a
 INF_DIR = ${SHARED_DIR}/dl_esm_inf/finite_difference
 INF_INC = ${INF_DIR}/src
 INF_LIB = ${INF_DIR}/src/dl_esm_inf_fd.a
-NVCC_FLAGS = -O3 -std=c++14 -use_fast_math -arch=$(CUDA_ARCH) --ptxas-options=-v -lineinfo
+
 CUDA_OBJS = cuda_nemolite2d.o
+CUDA_HEADERS = fortran_array_2d.cuh
 
 EXECS = nemolite2d
 
@@ -38,12 +39,12 @@ inf_lib:
 
 nemolite2d.o: $(COMMON_MODULES)
 
-cuda_nemolite2d.o: $(COMMON_MODULES)
+cuda_nemolite2d.o: $(COMMON_MODULES) $(CUDA_HEADERS)
 
 # Generic rules
 
 %.exe: $(MODULE_LIST)
-	$(F90) $(OMPFLAGS) -o $@ $(MODULE_LIST) $(TIMER_LIB) $(LDFLAGS) -L$(CUDA_LIB) -lcudart
+	$(F90) $(OMPFLAGS) -o $@ $(MODULE_LIST) $(TIMER_LIB) $(LDFLAGS) -L$(CUDA_LIB) -lcudart -lstdc++
 
 %.o: %.f90
 	$(F90) $(F90FLAGS) -I${INF_INC} -I${TIMER_INC} -c $<
