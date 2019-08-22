@@ -177,24 +177,21 @@ __global__ void
 k_momentum();
 
 void kernel_momentum(  
-                      int jpj, 
-                      int jpi,
+                      const int jpj, 
+                      const int jpi,
+                      const wp_t visc,
+                      const wp_t rdt,
+                      const wp_t cbfr,
                       FortranArray2D<wp_t, 1, 1>& e1t, 
                       FortranArray2D<wp_t, 1, 1>& e2t, 
                       FortranArray2D<wp_t, 0, 1>& e1u, 
                       FortranArray2D<wp_t, 0, 1>& e2u, 
-                      FortranArray2D<wp_t, 0, 0>& e1f, 
-                      FortranArray2D<wp_t, 0, 0>& e2f, 
                       FortranArray2D<wp_t, 1, 0>& e1v, 
                       FortranArray2D<wp_t, 1, 0>& e2v, 
-                      FortranArray2D<wp_t, 1, 1>& e12t, 
                       FortranArray2D<wp_t, 0, 1>& e12u, 
                       FortranArray2D<wp_t, 1, 0>& e12v, 
                       FortranArray2D<wp_t, 0, 1>& gphiu,
                       FortranArray2D<wp_t, 1, 0>& gphiv,
-                      FortranArray2D<wp_t, 0, 0>& gphif,
-                      FortranArray2D<wp_t, 1, 1>& xt,
-                      FortranArray2D<wp_t, 1, 1>& yt,
                       FortranArray2D<wp_t, 1, 1>& ht,
                       FortranArray2D<wp_t, 0, 1>& hu,
                       FortranArray2D<wp_t, 0, 1>& hv,
@@ -241,151 +238,139 @@ void kernel_momentum(
   static const wp_t omega = 7.292116e-05;
   static const wp_t d2r = pi/180.;
 
-  printf("START C\n");
-
   if ( (jj <= jpj) && (ji < jpi) )
-  for ( jj = 1; ; ++jj )
   {
-    for ( ji = 1; ; ++ji )
+    if (pt(ji,jj) + pt(ji+1,jj) <= 0) {} // jump over non-computatinal domain
+    else if (pt(ji,jj) <= 0 || pt(ji+1,jj) <= 0) {} //jump over boundary u
+    else 
     {
-
-      if (pt(ji,jj) + pt(ji+1,jj) <= 0) {} // jump over non-computatinal domain
-      else if (pt(ji,jj) <= 0 || pt(ji+1,jj) <= 0) {} //jump over boundary u
-      else 
-      {
-        u_e  = 0.5 * (un(ji,jj) + un(ji+1,jj)) * e2t(ji+1,jj);      // add length scale.
-        depe = ht(ji+1,jj) + sshn(ji+1,jj);
+      u_e  = 0.5 * (un(ji,jj) + un(ji+1,jj)) * e2t(ji+1,jj);      // add length scale.
+      depe = ht(ji+1,jj) + sshn(ji+1,jj);
     
-        u_w  = 0.5 * (un(ji,jj) + un(ji-1,jj)) * e2t(ji,jj);        // add length scale
-        depw = ht(ji,jj) + sshn(ji,jj);
+      u_w  = 0.5 * (un(ji,jj) + un(ji-1,jj)) * e2t(ji,jj);        // add length scale
+      depw = ht(ji,jj) + sshn(ji,jj);
     
-        v_sc = 0.5 * (vn(ji,jj-1) + vn(ji+1,jj-1));
-        v_s  = 0.5 * v_sc * (e1v(ji,jj-1) + e1v(ji+1,jj-1));
-        deps = 0.5 * (hv(ji,jj-1) + sshn_v(ji,jj-1) + hv(ji+1,jj-1) + sshn_v(ji+1,jj-1));
+      v_sc = 0.5 * (vn(ji,jj-1) + vn(ji+1,jj-1));
+      v_s  = 0.5 * v_sc * (e1v(ji,jj-1) + e1v(ji+1,jj-1));
+      deps = 0.5 * (hv(ji,jj-1) + sshn_v(ji,jj-1) + hv(ji+1,jj-1) + sshn_v(ji+1,jj-1));
     
-        v_nc = 0.5 * (vn(ji,jj) + vn(ji+1,jj));
-        v_n  = 0.5 * v_nc * (e1v(ji,jj) + e1v(ji+1,jj));
-        depn = 0.5 * (hv(ji,jj) + sshn_v(ji,jj) + hv(ji+1,jj) + sshn_v(ji+1,jj));
+      v_nc = 0.5 * (vn(ji,jj) + vn(ji+1,jj));
+      v_n  = 0.5 * v_nc * (e1v(ji,jj) + e1v(ji+1,jj));
+      depn = 0.5 * (hv(ji,jj) + sshn_v(ji,jj) + hv(ji+1,jj) + sshn_v(ji+1,jj));
     
-        // -advection (currently first order upwind)
-        uu_w = (0.5 - SIGN(0.5, u_w)) * un(ji,jj) + (0.5 + SIGN(0.5, u_w)) * un(ji-1,jj); 
-        uu_e = (0.5 + SIGN(0.5, u_e)) * un(ji,jj) + (0.5 - SIGN(0.5, u_e)) * un(ji+1,jj); 
+      // -advection (currently first order upwind)
+      uu_w = (0.5 - SIGN(0.5, u_w)) * un(ji,jj) + (0.5 + SIGN(0.5, u_w)) * un(ji-1,jj); 
+      uu_e = (0.5 + SIGN(0.5, u_e)) * un(ji,jj) + (0.5 - SIGN(0.5, u_e)) * un(ji+1,jj); 
     
-        if (pt(ji,jj-1) <=0 || pt(ji+1,jj-1) <= 0)    
-           uu_s = (0.5 - SIGN(0.5, v_s)) * un(ji,jj); 
-        else
-           uu_s = (0.5 - SIGN(0.5, v_s)) * un(ji,jj) + (0.5 + SIGN(0.5, v_s)) * un(ji,jj-1); 
+      if (pt(ji,jj-1) <=0 || pt(ji+1,jj-1) <= 0)    
+         uu_s = (0.5 - SIGN(0.5, v_s)) * un(ji,jj); 
+      else
+         uu_s = (0.5 - SIGN(0.5, v_s)) * un(ji,jj) + (0.5 + SIGN(0.5, v_s)) * un(ji,jj-1); 
     
-        if (pt(ji,jj+1) <= 0 || pt(ji+1,jj+1) <= 0)   
-           uu_n = (0.5 + SIGN(0.5, v_n)) * un(ji,jj);
-        else
-           uu_n = (0.5 + SIGN(0.5, v_n)) * un(ji,jj) + (0.5 - SIGN(0.5, v_n)) * un(ji,jj+1);
+      if (pt(ji,jj+1) <= 0 || pt(ji+1,jj+1) <= 0)   
+         uu_n = (0.5 + SIGN(0.5, v_n)) * un(ji,jj);
+      else
+         uu_n = (0.5 + SIGN(0.5, v_n)) * un(ji,jj) + (0.5 - SIGN(0.5, v_n)) * un(ji,jj+1);
     
-        adv = uu_w * u_w * depw - uu_e * u_e * depe + uu_s * v_s * deps - uu_n * v_n * depn;
-            
-        // -viscosity
+      adv = uu_w * u_w * depw - uu_e * u_e * depe + uu_s * v_s * deps - uu_n * v_n * depn;
+          
+      // -viscosity
     
-        dudx_e = (un(ji+1,jj) - un(ji,  jj)) / e1t(ji+1,jj) * (ht(ji+1,jj) + sshn(ji+1,jj));
-        dudx_w = (un(ji,  jj) - un(ji-1,jj)) / e1t(ji,  jj) * (ht(ji,  jj) + sshn(ji,  jj));
-        if (pt(ji,jj-1) <=0 || pt(ji+1,jj-1) <= 0)    
-          dudy_s = 0.0; //slip boundary
-        else
-          dudy_s = (un(ji,jj) - un(ji,jj-1)) / (e2u(ji,jj) + e2u(ji,jj-1)) 
-                 * (hu(ji,jj) + sshn_u(ji,jj) + hu(ji,jj-1) + sshn_u(ji,jj-1));
+      dudx_e = (un(ji+1,jj) - un(ji,  jj)) / e1t(ji+1,jj) * (ht(ji+1,jj) + sshn(ji+1,jj));
+      dudx_w = (un(ji,  jj) - un(ji-1,jj)) / e1t(ji,  jj) * (ht(ji,  jj) + sshn(ji,  jj));
+      if (pt(ji,jj-1) <=0 || pt(ji+1,jj-1) <= 0)    
+        dudy_s = 0.0; //slip boundary
+      else
+        dudy_s = (un(ji,jj) - un(ji,jj-1)) / (e2u(ji,jj) + e2u(ji,jj-1)) 
+               * (hu(ji,jj) + sshn_u(ji,jj) + hu(ji,jj-1) + sshn_u(ji,jj-1));
     
-        if (pt(ji,jj+1) <= 0 || pt(ji+1,jj+1) <= 0)
-          dudy_n = 0.0; // slip boundary
-        else
-          dudy_n = (un(ji,jj+1) - un(ji,jj)) / (e2u(ji,jj) + e2u(ji,jj+1)) 
-                 * (hu(ji,jj) + sshn_u(ji,jj) + hu(ji,jj+1) + sshn_u(ji,jj+1));
+      if (pt(ji,jj+1) <= 0 || pt(ji+1,jj+1) <= 0)
+        dudy_n = 0.0; // slip boundary
+      else
+        dudy_n = (un(ji,jj+1) - un(ji,jj)) / (e2u(ji,jj) + e2u(ji,jj+1)) 
+               * (hu(ji,jj) + sshn_u(ji,jj) + hu(ji,jj+1) + sshn_u(ji,jj+1));
     
-        vis = (dudx_e - dudx_w ) * e2u(ji,jj) + (dudy_n - dudy_s ) * e1u(ji,jj) * 0.5;
-        vis = visc * vis ;  //visc will be an array visc(1:jpijglou) 
-                                   //for variable viscosity, such as turbulent viscosity
+      vis = (dudx_e - dudx_w ) * e2u(ji,jj) + (dudy_n - dudy_s ) * e1u(ji,jj) * 0.5;
+      vis = visc * vis ;  //visc will be an array visc(1:jpijglou) 
+                                 //for variable viscosity, such as turbulent viscosity
     
-                // -Coriolis' force (can be implemented implicitly)
-        cor = 0.5 * (2. * omega * sin(gphiu(ji,jj) * d2r) * (v_sc + v_nc)) * e12u(ji,jj) * (hu(ji,jj) + sshn_u(ji,jj));
+              // -Coriolis' force (can be implemented implicitly)
+      cor = 0.5 * (2. * omega * sin(gphiu(ji,jj) * d2r) * (v_sc + v_nc)) * e12u(ji,jj) * (hu(ji,jj) + sshn_u(ji,jj));
     
-                // -pressure gradient
-        hpg = -g * (hu(ji,jj) + sshn_u(ji,jj)) * e2u(ji,jj) * (sshn(ji+1,jj) - sshn(ji,jj));
-                // -linear bottom friction (implemented implicitly.
-        ua(ji,jj) = (un(ji,jj) * (hu(ji,jj) + sshn_u(ji,jj)) + rdt * (adv + vis + cor + hpg) / e12u(ji,jj)) 
-                  / (hu(ji,jj) + ssha_u(ji,jj)) / (1.0 + cbfr * rdt);
-      }
+              // -pressure gradient
+      hpg = -g * (hu(ji,jj) + sshn_u(ji,jj)) * e2u(ji,jj) * (sshn(ji+1,jj) - sshn(ji,jj));
+              // -linear bottom friction (implemented implicitly.
+      ua(ji,jj) = (un(ji,jj) * (hu(ji,jj) + sshn_u(ji,jj)) + rdt * (adv + vis + cor + hpg) / e12u(ji,jj)) 
+                / (hu(ji,jj) + ssha_u(ji,jj)) / (1.0 + cbfr * rdt);
     }
+  
   }
 
-  // OUTSIDE IF
-  // __syncThreads
+  __syncthreads();
   
   // v equation
-  for ( jj = 1; jj < jpj; ++jj )
+  if ( (jj < jpj) && (ji <= jpi) )
   {
-    for ( ji = 1; ji <= jpi; ++ji )
+    if (pt(ji,jj) + pt(ji+1,jj) <= 0) {} //jump over non-computatinal domain
+    else if (pt(ji,jj) <= 0 || pt(ji,jj+1) <= 0) {} //jump over v boundary cells
+    else
     {
+      v_n  = 0.5 * (vn(ji,jj) + vn(ji,jj+1)) * e1t(ji,jj+1);  //add length scale.
+      depn = ht(ji,jj+1) + sshn(ji,jj+1);
 
-      if (pt(ji,jj) + pt(ji+1,jj) <= 0) {} //jump over non-computatinal domain
-      else if (pt(ji,jj) <= 0 || pt(ji,jj+1) <= 0) {} //jump over v boundary cells
+      v_s  = 0.5 * (vn(ji,jj) + vn(ji,jj-1)) * e1t(ji,jj);    //add length scale
+      deps = ht(ji,jj) + sshn(ji,jj);
+
+      u_wc = 0.5 * (un(ji-1,jj) + un(ji-1,jj+1));
+      u_w  = 0.5 * u_wc * (e2u(ji-1,jj) + e2u(ji-1,jj+1));
+      depw = 0.50 * (hu(ji-1,jj) + sshn_u(ji-1,jj) + hu(ji-1,jj+1) + sshn_u(ji-1,jj+1));
+
+      u_ec = 0.5 * (un(ji,jj) + un(ji,jj+1));
+      u_e  = 0.5 * u_ec * (e2u(ji,jj) + e2u(ji,jj+1));
+      depe = 0.50 * (hu(ji,jj) + sshn_u(ji,jj) + hu(ji,jj+1) + sshn_u(ji,jj+1));
+
+      // -advection (currently first order upwind)
+      vv_s = (0.5 - SIGN(0.5, v_s)) * vn(ji,jj) + (0.5 + SIGN(0.5, v_s)) * vn(ji,jj-1); 
+      vv_n = (0.5 + SIGN(0.5, v_n)) * vn(ji,jj) + (0.5 - SIGN(0.5, v_n)) * vn(ji,jj+1); 
+
+      if (pt(ji-1,jj) <= 0 || pt(ji-1,jj+1) <= 0)   
+         vv_w = (0.5 - SIGN(0.5, u_w)) * vn(ji,jj); 
       else
-      {
-        v_n  = 0.5 * (vn(ji,jj) + vn(ji,jj+1)) * e1t(ji,jj+1);  //add length scale.
-        depn = ht(ji,jj+1) + sshn(ji,jj+1);
+         vv_w = (0.5 - SIGN(0.5, u_w)) * vn(ji,jj) + (0.5 + SIGN(0.5, u_w)) * vn(ji-1,jj); 
 
-        v_s  = 0.5 * (vn(ji,jj) + vn(ji,jj-1)) * e1t(ji,jj);    //add length scale
-        deps = ht(ji,jj) + sshn(ji,jj);
+      if (pt(ji+1,jj) <= 0 || pt(ji+1,jj+1) <= 0)
+         vv_e = (0.5 + SIGN(0.5, u_e)) * vn(ji,jj);
+      else
+         vv_e = (0.5 + SIGN(0.5, u_e)) * vn(ji,jj) + (0.5 - SIGN(0.5, u_e)) * vn(ji+1,jj);
 
-        u_wc = 0.5 * (un(ji-1,jj) + un(ji-1,jj+1));
-        u_w  = 0.5 * u_wc * (e2u(ji-1,jj) + e2u(ji-1,jj+1));
-        depw = 0.50 * (hu(ji-1,jj) + sshn_u(ji-1,jj) + hu(ji-1,jj+1) + sshn_u(ji-1,jj+1));
+      adv = vv_w * u_w * depw - vv_e * u_e * depe + vv_s * v_s * deps - vv_n * v_n * depn;
 
-        u_ec = 0.5 * (un(ji,jj) + un(ji,jj+1));
-        u_e  = 0.5 * u_ec * (e2u(ji,jj) + e2u(ji,jj+1));
-        depe = 0.50 * (hu(ji,jj) + sshn_u(ji,jj) + hu(ji,jj+1) + sshn_u(ji,jj+1));
+      dvdy_n = (vn(ji,jj+1) - vn(ji,  jj)) / e2t(ji,jj+1) * (ht(ji,jj+1) + sshn(ji,jj+1));
+      dvdy_s = (vn(ji,  jj) - vn(ji,jj-1)) / e2t(ji,  jj) * (ht(ji,  jj) + sshn(ji,  jj));
 
-        // -advection (currently first order upwind)
-        vv_s = (0.5 - SIGN(0.5, v_s)) * vn(ji,jj) + (0.5 + SIGN(0.5, v_s)) * vn(ji,jj-1); 
-        vv_n = (0.5 + SIGN(0.5, v_n)) * vn(ji,jj) + (0.5 - SIGN(0.5, v_n)) * vn(ji,jj+1); 
+      if (pt(ji-1,jj) <= 0 || pt(ji-1,jj+1) <= 0)
+        dvdx_w = 0.0;
+      else
+        dvdx_w = (vn(ji,jj) - vn(ji-1,jj)) / (e1v(ji,jj) + e1v(ji-1,jj)) 
+               * (hv(ji,jj) + sshn_v(ji,jj) + hv(ji-1,jj) + sshn_v(ji-1,jj));
 
-        if (pt(ji-1,jj) <= 0 || pt(ji-1,jj+1) <= 0)   
-           vv_w = (0.5 - SIGN(0.5, u_w)) * vn(ji,jj); 
-        else
-           vv_w = (0.5 - SIGN(0.5, u_w)) * vn(ji,jj) + (0.5 + SIGN(0.5, u_w)) * vn(ji-1,jj); 
+      if (pt(ji+1,jj) <= 0 || pt(ji+1,jj+1) <= 0)
+        dvdx_e = 0.0;
+      else
+        dvdx_e = (vn(ji+1,jj) - vn(ji,jj)) / (e1v(ji,jj) + e1v(ji+1,jj)) 
+               * (hv(ji,jj) + sshn_v(ji,jj) + hv(ji+1,jj) + sshn_v(ji+1,jj));
 
-        if (pt(ji+1,jj) <= 0 || pt(ji+1,jj+1) <= 0)
-           vv_e = (0.5 + SIGN(0.5, u_e)) * vn(ji,jj);
-        else
-           vv_e = (0.5 + SIGN(0.5, u_e)) * vn(ji,jj) + (0.5 - SIGN(0.5, u_e)) * vn(ji+1,jj);
+      vis = (dvdy_n - dvdy_s ) * e1v(ji,jj) + (dvdx_e - dvdx_w ) * e2v(ji,jj) * 0.5;  
 
-        adv = vv_w * u_w * depw - vv_e * u_e * depe + vv_s * v_s * deps - vv_n * v_n * depn;
-
-        dvdy_n = (vn(ji,jj+1) - vn(ji,  jj)) / e2t(ji,jj+1) * (ht(ji,jj+1) + sshn(ji,jj+1));
-        dvdy_s = (vn(ji,  jj) - vn(ji,jj-1)) / e2t(ji,  jj) * (ht(ji,  jj) + sshn(ji,  jj));
-
-        if (pt(ji-1,jj) <= 0 || pt(ji-1,jj+1) <= 0)
-          dvdx_w = 0.0;
-        else
-          dvdx_w = (vn(ji,jj) - vn(ji-1,jj)) / (e1v(ji,jj) + e1v(ji-1,jj)) 
-                 * (hv(ji,jj) + sshn_v(ji,jj) + hv(ji-1,jj) + sshn_v(ji-1,jj));
-
-        if (pt(ji+1,jj) <= 0 || pt(ji+1,jj+1) <= 0)
-          dvdx_e = 0.0;
-        else
-          dvdx_e = (vn(ji+1,jj) - vn(ji,jj)) / (e1v(ji,jj) + e1v(ji+1,jj)) 
-                 * (hv(ji,jj) + sshn_v(ji,jj) + hv(ji+1,jj) + sshn_v(ji+1,jj));
-
-        vis = (dvdy_n - dvdy_s ) * e1v(ji,jj) + (dvdx_e - dvdx_w ) * e2v(ji,jj) * 0.5;  
-
-        vis = visc * vis; 
-        cor = -0.5 * (2. * omega * sin(gphiv(ji,jj) * d2r) * (u_ec + u_wc)) 
-            * e12v(ji,jj) * (hv(ji,jj) + sshn_v(ji,jj));
-        hpg = -g * (hv(ji,jj) + sshn_v(ji,jj)) * e1v(ji,jj) * (sshn(ji,jj+1) - sshn(ji,jj));
-        va(ji,jj) = (vn(ji,jj) * (hv(ji,jj) + sshn_v(ji,jj)) + rdt * (adv + vis + cor + hpg) / e12v(ji,jj) ) 
-                  / ((hv(ji,jj) + ssha_v(ji,jj))) / (1.0 + cbfr * rdt); 
-          
-      }
+      vis = visc * vis; 
+      cor = -0.5 * (2. * omega * sin(gphiv(ji,jj) * d2r) * (u_ec + u_wc)) 
+          * e12v(ji,jj) * (hv(ji,jj) + sshn_v(ji,jj));
+      hpg = -g * (hv(ji,jj) + sshn_v(ji,jj)) * e1v(ji,jj) * (sshn(ji,jj+1) - sshn(ji,jj));
+      va(ji,jj) = (vn(ji,jj) * (hv(ji,jj) + sshn_v(ji,jj)) + rdt * (adv + vis + cor + hpg) / e12v(ji,jj) ) 
+                / ((hv(ji,jj) + ssha_v(ji,jj))) / (1.0 + cbfr * rdt); 
+        
     }
   }
-  printf("END C\n");
 }
 
 __global__ void
