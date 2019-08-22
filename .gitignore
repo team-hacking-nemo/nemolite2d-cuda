@@ -2,15 +2,13 @@
 *.nvvp
 
 # Text files/log files
+benchmark/
 *.txt
 *.log 
 *.csv
 
 .env
 .venv
-
-# Nvidia profiling output
-*.nvvp
 
 # Application output files
 *.dat
