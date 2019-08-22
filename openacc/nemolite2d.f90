@@ -411,8 +411,8 @@ CONTAINS
         call timer_start(idxt, label='Continuity')
 
 !kernel continuity
-!$acc parallel
-!$acc loop collapse(2)
+        !$acc parallel
+        !$acc loop collapse(2)
         DO jj = 1, jpj
             DO ji = 1, jpi
                 rtmp1 = (sshn_u(ji, jj) + hu(ji, jj))*un(ji, jj)
@@ -422,6 +422,7 @@ CONTAINS
                 ssha(ji, jj) = sshn(ji, jj) + (rtmp2 - rtmp1 + rtmp4 - rtmp3)*rdt/e12t(ji, jj)
             END DO
         END DO
+        !$acc end loop
         !$acc end parallel
 !end kernel continuity
 
@@ -653,7 +654,7 @@ CONTAINS
 
         call timer_start(idxt, label='BCs')
 
-!$acc parallel
+        !$acc parallel
         !open boundary condition of clamped ssh
 
 !kernel ssh clamped obc
@@ -674,24 +675,27 @@ CONTAINS
             END IF
         END DO
         END DO
+        !$acc end loop
 !end kernel ssh clamped obc
 
 ! kernel"solid boundary conditions for u-velocity"
-!$acc loop collapse(2)
+        !$acc loop collapse(2)
         DO jj = 1, jpj
             DO ji = 0, jpi
                 IF (pt(ji, jj)*pt(ji + 1, jj) == 0) ua(ji, jj) = 0._wp
             END DO
         END DO
+        !$acc end loop
 !end kernel "solid boundary conditions for u-velocity"
 
 !kernel "solid boundary conditions for v-velocity"
-!$acc loop collapse(2)
+        !$acc loop collapse(2)
         DO jj = 0, jpj
             DO ji = 1, jpi
                 IF (pt(ji, jj)*pt(ji, jj + 1) == 0) va(ji, jj) = 0._wp
             END DO
         END DO
+        !$acc end loop
 !end kernel "solid boundary conditions for v-velocity"
              
 
@@ -701,7 +705,7 @@ CONTAINS
         ! ua and va in du/dn should be the specified tidal forcing
 
 ! kernel Flather u
-!$acc loop collapse(2)
+        !$acc loop collapse(2)
         DO jj = 1, jpj
             DO ji = 0, jpi
                 IF (pt(ji, jj) + pt(ji + 1, jj) <= -1) CYCLE                         ! not in the domain
@@ -714,6 +718,7 @@ CONTAINS
                 END IF
                 END DO
         END DO
+        !$acc end loop
 !end kernel flather u .
 
 !kernel Flather v
@@ -730,8 +735,9 @@ CONTAINS
                 END IF
             END DO
         END DO
+        !$acc end loop
 !end kernel flather v .
-!$acc end parallel
+        !$acc end parallel
         call timer_stop(idxt)
 
     END SUBROUTINE bc
