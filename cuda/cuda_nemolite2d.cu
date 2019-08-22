@@ -166,7 +166,24 @@ k_setup_model_params(const int jpi,
                      const wp_t visc);
 
 __global__ void
-k_continuity();
+k_continuity(const FortranArray2D<wp_t, 1, 1>& sshn,
+             const FortranArray2D<wp_t, 0, 1>& sshn_u,
+             const FortranArray2D<wp_t, 1, 0>& sshn_v,
+
+             const FortranArray2D<wp_t, 1, 1>& ssha,
+
+             const FortranArray2D<wp_t, 0, 1>& un,
+             const FortranArray2D<wp_t, 1, 0>& vn,
+
+             const FortranArray2D<wp_t, 0, 1>& hu,
+             const FortranArray2D<wp_t, 1, 0>& hv,
+
+             const FortranArray2D<wp_t, 1, 1>& e12t,
+
+             const int jpi,
+             const int jpj,
+
+             const int rdt);
 
 __global__ void
 k_boundary_conditions(wp_t rtime,
@@ -391,7 +408,29 @@ cuda_setup_model_params_(int jpi,
 
 void
 cuda_continuity_()
-{}
+{
+  const int jpi = model_params.jpi;
+  const int jpj = model_params.jpj;
+
+  k_continuity<<<jpi + 1, jpj + 1>>>(*simulation_vars.sshn,
+                                     *simulation_vars.sshn_u,
+                                     *simulation_vars.sshn_v,
+
+                                     *simulation_vars.ssha,
+
+                                     *simulation_vars.un,
+                                     *simulation_vars.vn,
+
+                                     *grid_constants.hu,
+                                     *grid_constants.hv,
+
+                                     *grid_constants.e12t,
+
+                                     jpi,
+                                     jpj,
+
+                                     model_params.rdt);
+}
 
 void
 cuda_momentum_()
@@ -651,9 +690,39 @@ k_initialise_grid(const FortranArray2D<wp_t, 1, 1>& sshn,
 }
 
 __global__ void
-k_continuity()
+k_continuity(const FortranArray2D<wp_t, 1, 1>& sshn,
+             const FortranArray2D<wp_t, 0, 1>& sshn_u,
+             const FortranArray2D<wp_t, 1, 0>& sshn_v,
+
+             const FortranArray2D<wp_t, 1, 1>& ssha,
+
+             const FortranArray2D<wp_t, 0, 1>& un,
+             const FortranArray2D<wp_t, 1, 0>& vn,
+
+             const FortranArray2D<wp_t, 0, 1>& hu,
+             const FortranArray2D<wp_t, 1, 0>& hv,
+
+             const FortranArray2D<wp_t, 1, 1>& e12t,
+
+             const int jpi,
+             const int jpj,
+
+             const int rdt)
 {
-  // TODO:
+  const int ji = threadIdx.x * blockIdx.x + blockDim.x;
+  const int jj = threadIdx.y * blockIdx.y + blockDim.y;
+
+  if (ji == 0 || ji > jpi || jj == 0 || jj > jpj) {
+    return;
+  }
+
+  const wp_t rtmp1 = (sshn_u(ji, jj) + hu(ji, jj)) * un(ji, jj);
+  const wp_t rtmp2 = (sshn_u(ji - 1, jj) + hu(ji - 1, jj)) * un(ji - 1, jj);
+  const wp_t rtmp3 = (sshn_v(ji, jj) + hv(ji, jj)) * vn(ji, jj);
+  const wp_t rtmp4 = (sshn_v(ji, jj - 1) + hv(ji, jj - 1)) * vn(ji, jj - 1);
+
+  ssha(ji, jj) =
+    sshn(ji, jj) + (rtmp2 - rtmp1 + rtmp4 - rtmp3) * rdt / e12t(ji, jj);
 }
 
 __global__ void
