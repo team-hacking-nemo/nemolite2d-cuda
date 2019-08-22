@@ -195,7 +195,16 @@ void kernel_momentum(
                       FortranArray2D<wp_t, 1, 1>& ht,
                       FortranArray2D<wp_t, 0, 1>& hu,
                       FortranArray2D<wp_t, 0, 1>& hv,
-                      FortranArray2D<int, 0, 0>& pt 
+                      FortranArray2D<int, 0, 0>& pt, 
+                      FortranArray2D<wp_t, 1, 1>& sshn,
+                      FortranArray2D<wp_t, 0, 1>& sshn_u,
+                      FortranArray2D<wp_t, 1, 0>& sshn_v,
+                      FortranArray2D<wp_t, 0, 1>& ssha_u,
+                      FortranArray2D<wp_t, 1, 0>& ssha_v,
+                      FortranArray2D<wp_t, 0, 1>& un,
+                      FortranArray2D<wp_t, 1, 0>& vn,
+                      FortranArray2D<wp_t, 0, 1>& ua,
+                      FortranArray2D<wp_t, 1, 0>& va
                     )
 {
   int jj = 1 + threadIdx.x + blockIdx.x * blockDim.x;
