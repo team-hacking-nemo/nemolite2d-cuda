@@ -394,8 +394,6 @@ CONTAINS
 
         rtime = REAL(istp, wp)*rdt
 
-        !CALL cuda_momentum_()
-
         CALL continuity
         CALL momentum
         CALL bc(rtime)  ! open and solid boundary condition
