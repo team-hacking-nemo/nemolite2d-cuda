@@ -68,6 +68,11 @@ struct SimulationVariables
   FortranArray2D<wp_t, 0, 1>* ua = nullptr;
   FortranArray2D<wp_t, 1, 0>* va = nullptr;
 
+  // We need to double buffer the ua and va due to possible race conditions in
+  // the Flather boundary conditions.
+  FortranArray2D<wp_t, 0, 1>* ua_buffer = nullptr;
+  FortranArray2D<wp_t, 1, 0>* va_buffer = nullptr;
+
   SimulationVariables() {}
 };
 
@@ -164,7 +169,26 @@ __global__ void
 k_continuity();
 
 __global__ void
-k_boundary_conditions();
+k_boundary_conditions(wp_t rtime,
+
+                      const FortranArray2D<wp_t, 0, 1>& sshn_u,
+                      const FortranArray2D<wp_t, 1, 0>& sshn_v,
+
+                      const FortranArray2D<wp_t, 1, 1>& ssha,
+
+                      const FortranArray2D<wp_t, 0, 1>& ua,
+                      const FortranArray2D<wp_t, 1, 0>& va,
+
+                      const FortranArray2D<wp_t, 0, 1>& ua_buffer,
+                      const FortranArray2D<wp_t, 1, 0>& va_buffer,
+
+                      const FortranArray2D<wp_t, 0, 1>& hu,
+                      const FortranArray2D<wp_t, 1, 0>& hv,
+
+                      const FortranArray2D<int, 0, 0>& pt,
+
+                      const int jpi,
+                      const int jpj);
 
 __global__ void
 k_momentum();
@@ -174,8 +198,6 @@ k_next();
 
 void
 finalise();
-
-FortranArray2D<wp_t, 0, 1>* global_array = nullptr;
 
 extern "C"
 {
@@ -192,19 +214,10 @@ extern "C"
                                 wp_t visc);
 
   void cuda_initialise_grid_();
-
-  void cuda_continuity_() { k_continuity<<<1, 10>>>(); }
-
-  void cuda_boundary_conditions_() { k_boundary_conditions<<<1, 10>>>(); }
-
-  void cuda_momentum_()
-  {
-    k_momentum<<<1, 10>>>();
-    cudaDeviceSynchronize();
-  }
-
-  void cuda_next_() { k_next<<<1, 10>>>(); }
-
+  void cuda_continuity_();
+  void cuda_momentum_();
+  void cuda_boundary_conditions_(wp_t rtime);
+  void cuda_next_();
   void cuda_finalise_();
 };
 
@@ -212,6 +225,11 @@ GridConstants grid_constants;
 SimulationVariables simulation_vars;
 
 ModelParameters model_params;
+
+__device__ const wp_t pi = 3.1415926535897932;
+__device__ const wp_t g = 9.80665;          // Gravity
+__device__ const wp_t omega = 7.292116e-05; // Earth rotation speed (s^(-1))
+__device__ const wp_t d2r = pi / 180.0;     // Degrees to radians
 
 void
 cuda_initialise_grid_()
@@ -274,6 +292,9 @@ cuda_initialise_grid_()
   simulation_vars.ua = new FortranArray2D<wp_t, 0, 1>(jpi, jpj);
   simulation_vars.va = new FortranArray2D<wp_t, 1, 0>(jpi, jpj);
 
+  simulation_vars.ua_buffer = new FortranArray2D<wp_t, 0, 1>(jpi, jpj);
+  simulation_vars.va_buffer = new FortranArray2D<wp_t, 1, 0>(jpi, jpj);
+
   // Initialise simulation parameters
   k_initialise_grid<<<jpi + 2, jpj + 2>>>(*simulation_vars.sshn,
                                           *simulation_vars.sshn_u,
@@ -317,6 +338,146 @@ cuda_initialise_grid_()
                                           model_params.dep_const);
 
   cudaDeviceSynchronize();
+}
+
+void
+cuda_setup_model_params_(int jpi,
+                         int jpj,
+                         wp_t dx,
+                         wp_t dy,
+                         wp_t dep_const,
+                         int nit000,
+                         int nitend,
+                         int irecord,
+                         wp_t rdt,
+                         wp_t cbfr,
+                         wp_t visc)
+{
+  printf("[CUDA](Host) Initialising model params.\n");
+
+  model_params = {
+    .jpi = jpi,
+    .jpj = jpj,
+    .dx = dx,
+    .dy = dy,
+    .dep_const = dep_const,
+    .nit000 = nit000,
+    .nitend = nitend,
+    .irecord = irecord,
+    .rdt = rdt,
+    .cbfr = cbfr,
+    .visc = visc,
+  };
+}
+
+void
+cuda_continuity_()
+{}
+
+void
+cuda_momentum_()
+{
+  // TODO:
+}
+
+void
+cuda_boundary_conditions_(wp_t rtime)
+{
+  const int jpi = model_params.jpi;
+  const int jpj = model_params.jpj;
+
+  k_boundary_conditions<<<jpi + 1, jpj + 1>>>(rtime,
+
+                                              *simulation_vars.sshn_u,
+                                              *simulation_vars.sshn_v,
+
+                                              *simulation_vars.ssha,
+
+                                              *simulation_vars.ua,
+                                              *simulation_vars.va,
+
+                                              *simulation_vars.ua_buffer,
+                                              *simulation_vars.va_buffer,
+
+                                              *grid_constants.hu,
+                                              *grid_constants.hv,
+
+                                              *grid_constants.pt,
+
+                                              jpi,
+                                              jpj);
+
+  cudaDeviceSynchronize();
+
+  // Now swap the double buffered arrays.
+  wp_t* const ua_buffered_data =
+    simulation_vars.ua_buffer->get_device_data_ptr();
+  wp_t* const va_buffered_data =
+    simulation_vars.va_buffer->get_device_data_ptr();
+
+  simulation_vars.ua_buffer->set_device_data_ptr(
+    simulation_vars.ua->get_device_data_ptr());
+  simulation_vars.va_buffer->set_device_data_ptr(
+    simulation_vars.va->get_device_data_ptr());
+
+  simulation_vars.ua->set_device_data_ptr(ua_buffered_data);
+  simulation_vars.va->set_device_data_ptr(va_buffered_data);
+}
+
+void
+cuda_next_()
+{
+  // TODO:
+}
+
+void
+cuda_finalise_()
+{
+  // Clean up grid constants arrays.
+  delete grid_constants.e1t;
+  delete grid_constants.e2t;
+  delete grid_constants.e1u;
+  delete grid_constants.e2u;
+
+  delete grid_constants.e1f;
+  delete grid_constants.e2f;
+  delete grid_constants.e1v;
+  delete grid_constants.e2v;
+
+  delete grid_constants.e12t;
+  delete grid_constants.e12u;
+  delete grid_constants.e12v;
+
+  delete grid_constants.gphiu;
+  delete grid_constants.gphiv;
+  delete grid_constants.gphif;
+
+  delete grid_constants.xt;
+  delete grid_constants.yt;
+
+  delete grid_constants.ht;
+  delete grid_constants.hu;
+  delete grid_constants.hv;
+
+  delete grid_constants.pt;
+
+  // Clean up simulation params arrays.
+  delete simulation_vars.sshn;
+  delete simulation_vars.sshn_u;
+  delete simulation_vars.sshn_v;
+
+  delete simulation_vars.ssha;
+  delete simulation_vars.ssha_u;
+  delete simulation_vars.ssha_v;
+
+  delete simulation_vars.un;
+  delete simulation_vars.vn;
+
+  delete simulation_vars.ua;
+  delete simulation_vars.va;
+
+  cudaError_t cudaStatus = cudaDeviceReset();
+  assert(cudaStatus == cudaSuccess);
 }
 
 __global__ void
@@ -445,36 +606,6 @@ k_initialise_grid(const FortranArray2D<wp_t, 1, 1>& sshn,
   }
 }
 
-void
-cuda_setup_model_params_(int jpi,
-                         int jpj,
-                         wp_t dx,
-                         wp_t dy,
-                         wp_t dep_const,
-                         int nit000,
-                         int nitend,
-                         int irecord,
-                         wp_t rdt,
-                         wp_t cbfr,
-                         wp_t visc)
-{
-  printf("[CUDA](Host) Initialising model params.\n");
-
-  model_params = {
-    .jpi = jpi,
-    .jpj = jpj,
-    .dx = dx,
-    .dy = dy,
-    .dep_const = dep_const,
-    .nit000 = nit000,
-    .nitend = nitend,
-    .irecord = irecord,
-    .rdt = rdt,
-    .cbfr = cbfr,
-    .visc = visc,
-  };
-}
-
 __global__ void
 k_continuity()
 {
@@ -488,63 +619,96 @@ k_momentum()
 }
 
 __global__ void
-k_boundary_conditions()
+k_boundary_conditions(wp_t rtime,
+                      const FortranArray2D<wp_t, 0, 1>& sshn_u,
+                      const FortranArray2D<wp_t, 1, 0>& sshn_v,
+
+                      const FortranArray2D<wp_t, 1, 1>& ssha,
+
+                      const FortranArray2D<wp_t, 0, 1>& ua,
+                      const FortranArray2D<wp_t, 1, 0>& va,
+
+                      const FortranArray2D<wp_t, 0, 1>& ua_buffer,
+                      const FortranArray2D<wp_t, 1, 0>& va_buffer,
+
+                      const FortranArray2D<wp_t, 0, 1>& hu,
+                      const FortranArray2D<wp_t, 1, 0>& hv,
+
+                      const FortranArray2D<int, 0, 0>& pt,
+
+                      const int jpi,
+                      const int jpj)
 {
-  // TODO:
+  const wp_t amp_tide = 0.2;
+  const wp_t omega_tide = (2.0 * 3.14159) / (12.42 * 3600.0);
+
+  int ji = threadIdx.x * blockIdx.x + blockDim.x;
+  int jj = threadIdx.y * blockIdx.y + blockDim.y;
+
+  if (ji > jpi || jj > jpj) {
+    return;
+  }
+
+  // Sea surface height clamping
+  if (ji > 0 && jj > 0) {
+    bool is_near_boundary = pt(ji, jj - 1) < 0 || pt(ji, jj + 1) < 0 ||
+                            pt(ji - 1, jj) < 0 || pt(ji + 1, jj) < 0;
+    if (pt(ji, jj) > 0 && is_near_boundary) {
+      ssha(ji, jj) = amp_tide * sin(omega_tide * rtime);
+    }
+  }
+
+  // Solid boundary conditions for u-velocity
+  if (jj > 0) {
+    if (pt(ji, jj) * pt(ji + 1, jj) == 0) {
+      ua_buffer(ji, jj) = 0.0;
+    }
+  }
+
+  // Solid boundary conditions for v-velocity
+  if (ji > 0) {
+    if (pt(ji, jj) * pt(ji, jj + 1) == 0) {
+      va_buffer(ji, jj) = 0.0;
+    }
+  }
+
+  // Flather boundary conditions conditions for u
+  if (jj > 0) {
+    if (pt(ji, jj) + pt(ji + 1, jj) <= -1) {
+      ua_buffer(ji, jj) = ua(ji, jj);
+    } else if (pt(ji, jj) < 0) {
+      const int jiu = ji + 1;
+      ua_buffer(ji, jj) =
+        ua(jiu, jj) + sqrt(g / hu(ji, jj)) * (sshn_u(ji, jj) - sshn_u(jiu, jj));
+    } else if (pt(ji + 1, jj) < 0) {
+      const int jiu = ji - 1;
+      ua_buffer(ji, jj) =
+        ua(jiu, jj) + sqrt(g / hu(ji, jj)) * (sshn_u(ji, jj) - sshn_u(jiu, jj));
+    } else {
+      ua_buffer(ji, jj) = ua(ji, jj);
+    }
+  }
+
+  // Flather boundary conditions for v
+  if (ji > 0) {
+    if (pt(ji, jj) + pt(ji, jj + 1) <= -1) {
+      va_buffer(ji, jj) = va(ji, jj);
+    } else if (pt(ji, jj) < 0) {
+      const int jiv = jj + 1;
+      va_buffer(ji, jj) =
+        va(ji, jiv) + sqrt(g / hv(ji, jj)) * (sshn_v(ji, jj) - sshn_v(ji, jiv));
+    } else if (pt(ji, jj + 1) < 0) {
+      const int jiv = jj - 1;
+      va_buffer(ji, jj) =
+        va(ji, jiv) + sqrt(g / hv(ji, jj)) * (sshn_v(ji, jj) - sshn_v(ji, jiv));
+    } else {
+      va_buffer(ji, jj) = va(ji, jj);
+    }
+  }
 }
 
 __global__ void
 k_next()
 {
   // TODO:
-}
-
-void
-cuda_finalise_()
-{
-  // Clean up grid constants arrays.
-  delete grid_constants.e1t;
-  delete grid_constants.e2t;
-  delete grid_constants.e1u;
-  delete grid_constants.e2u;
-
-  delete grid_constants.e1f;
-  delete grid_constants.e2f;
-  delete grid_constants.e1v;
-  delete grid_constants.e2v;
-
-  delete grid_constants.e12t;
-  delete grid_constants.e12u;
-  delete grid_constants.e12v;
-
-  delete grid_constants.gphiu;
-  delete grid_constants.gphiv;
-  delete grid_constants.gphif;
-
-  delete grid_constants.xt;
-  delete grid_constants.yt;
-
-  delete grid_constants.ht;
-  delete grid_constants.hu;
-  delete grid_constants.hv;
-
-  delete grid_constants.pt;
-
-  // Clean up simulation params arrays.
-  delete simulation_vars.sshn;
-  delete simulation_vars.sshn_u;
-  delete simulation_vars.sshn_v;
-
-  delete simulation_vars.ssha;
-  delete simulation_vars.ssha_u;
-  delete simulation_vars.ssha_v;
-
-  delete simulation_vars.un;
-  delete simulation_vars.vn;
-
-  delete simulation_vars.ua;
-  delete simulation_vars.va;
-
-  cudaError_t cudaStatus = cudaDeviceReset();
-  assert(cudaStatus == cudaSuccess);
 }

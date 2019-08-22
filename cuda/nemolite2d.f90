@@ -55,23 +55,43 @@ PROGRAM nemolite2d
     REAL(wp) :: rtmp1, rtmp2, rtmp3, rtmp4      !real temporary variables
     INTEGER(c_int) :: idxt ! Index for main-loop timer
 
-    interface 
-    subroutine cuda_setup_model(jpi, jpj, dx, dy, dep_const, nit000, nitend, irecord, rdt, cbfr, visc ) bind(C,name="cuda_setup_model_params_")
-      use, intrinsic::iso_c_binding, only : c_int, c_float, c_double
-      implicit none
-        integer(c_int), value :: jpi
-        integer(c_int), value :: jpj
-        real(c_double), value :: dx
-        real(c_double), value :: dy
-        real(c_double), value :: dep_const
-        integer(c_int), value :: nit000
-        integer(c_int), value :: nitend
-        integer(c_int), value :: irecord
-        real(c_double), value :: rdt
-        real(c_double), value :: cbfr
-        real(c_double), value :: visc
-    end subroutine
-  end interface
+    interface
+        subroutine cuda_setup_model(&
+            & jpi, &
+            & jpj, &
+            & dx, &
+            & dy, &
+            & dep_const, &
+            & nit000, &
+            & nitend, &
+            & irecord, &
+            & rdt, &
+            & cbfr, &
+            & visc &
+          & ) bind(C, name="cuda_setup_model_params_")
+            use, intrinsic::iso_c_binding, only: c_int, c_float, c_double
+            implicit none
+            integer(c_int), value :: jpi
+            integer(c_int), value :: jpj
+            real(c_double), value :: dx
+            real(c_double), value :: dy
+            real(c_double), value :: dep_const
+            integer(c_int), value :: nit000
+            integer(c_int), value :: nitend
+            integer(c_int), value :: irecord
+            real(c_double), value :: rdt
+            real(c_double), value :: cbfr
+            real(c_double), value :: visc
+        end subroutine
+    end interface
+
+    interface
+        subroutine cuda_boundary_conditions(rtime) bind(C, name="cuda_boundary_conditions_")
+            use, intrinsic::iso_c_binding, only: c_double
+            implicit none
+            real(c_double), value :: rtime
+        end subroutine
+    end interface
 
     !! read in model parameters
     CALL setup
@@ -413,7 +433,10 @@ CONTAINS
 
         rtime = REAL(istp, wp)*rdt
 
-        CALL cuda_momentum()
+        CALL cuda_continuity
+        CALL cuda_momentum
+        CALL cuda_boundary_conditions(rtime)
+        CALL cuda_next
 
         CALL continuity
         CALL momentum
