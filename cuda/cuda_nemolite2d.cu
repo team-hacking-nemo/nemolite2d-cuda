@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include <cuda.h>
 #include <cuda_runtime.h>
 
 #include "fortran_array_2d.cuh"
@@ -10,7 +11,7 @@
 typedef double wp_t;
 
 // FORTRAN SIGN FUNCTION ON DEVICE
-__device__ inline wp_t SIGN( real wp_t, wp_t B )
+__device__ inline wp_t SIGN( wp_t A, wp_t B )
 {
   return A*((B > 0.) - (B < 0.));
 }
@@ -175,50 +176,77 @@ k_boundary_conditions();
 __global__ void
 k_momentum();
 
-void kernel_momentum( real &pi, real &g, real &omega, real &d2r,  
-                int *pt_,
-                real *e1t_, real *e2t_, real *e1u_, real *e2u_,
-                real *e1f_, real *e2f_, real *e1v_, real *e2v_, 
-                real *e12t_, real *e12u_, real *e12v_,
-                real *gphiu_, real *gphiv_, real *gphif_,
-                real *xt_, real *yt_,
-                real *ht_, real *hu_, real *hv_, real *hf_,
-                real *sshb_, real *sshb_u_, real *sshb_v_,
-                real *sshn_, real *sshn_u_, real *sshn_v_,
-                real *ssha_, real *ssha_u_, real *ssha_v_,
-                real *un_,  real *vn_, real *ua_,  real *va_,
-                int &jpiglo, int &jpjglo, int &jpi, int &jpj,
-                int &jphgr_msh,
-                int &nit000, int &nitend, int &irecord,         
-                real &dx, real &dy, real &dep_const,               
-                real &rdt,                             
-                real &cbfr,                            
-                real &visc,                            
-                int &istp,                            
-                int &ji, int &jj,                   
-                int &itmp1, int &itmp2,                   
-                real &rtmp1, real& rtmp2, real &rtmp3, real &rtmp4,      
-                int &idxt )
+void kernel_momentum(  
+                      int jpj, 
+                      int jpi,
+                      FortranArray2D<wp_t, 1, 1>& e1t, 
+                      FortranArray2D<wp_t, 1, 1>& e2t, 
+                      FortranArray2D<wp_t, 0, 1>& e1u, 
+                      FortranArray2D<wp_t, 0, 1>& e2u, 
+                      FortranArray2D<wp_t, 0, 0>& e1f, 
+                      FortranArray2D<wp_t, 0, 0>& e2f, 
+                      FortranArray2D<wp_t, 1, 0>& e1v, 
+                      FortranArray2D<wp_t, 1, 0>& e2v, 
+                      FortranArray2D<wp_t, 1, 1>& e12t, 
+                      FortranArray2D<wp_t, 0, 1>& e12u, 
+                      FortranArray2D<wp_t, 1, 0>& e12v, 
+                      FortranArray2D<wp_t, 0, 1>& gphiu,
+                      FortranArray2D<wp_t, 1, 0>& gphiv,
+                      FortranArray2D<wp_t, 0, 0>& gphif,
+                      FortranArray2D<wp_t, 1, 1>& xt,
+                      FortranArray2D<wp_t, 1, 1>& yt,
+                      FortranArray2D<wp_t, 1, 1>& ht,
+                      FortranArray2D<wp_t, 0, 1>& hu,
+                      FortranArray2D<wp_t, 0, 1>& hv,
+                      FortranArray2D<int, 0, 0>& pt 
+                    )
 {
- unsigned int jj = threadIdx.x + blockIdx.x * blockDim.x;
- unsigned int ji = threadIdx.y + blockIdx.y * blockDim.y;
+  int jj = 1 + threadIdx.x + blockIdx.x * blockDim.x;
+  int ji = 1 + threadIdx.y + blockIdx.y * blockDim.y;
 
-  real u_e, u_w;
-  real v_s, v_n;
-  real v_sc, v_nc, u_ec, u_wc;
-  real uu_e, uu_w, uu_s, uu_n;
-  real vv_e, vv_w, vv_s, vv_n;
-  real depe, depw, deps, depn;
-  real dudx_e, dudy_n, dvdx_e, dvdy_n;
-  real dudx_w, dudy_s, dvdx_w, dvdy_s;
-
-  real adv, vis, hpg, cor;
+  wp_t u_e;
+  wp_t u_w;
+  wp_t v_s;
+  wp_t v_n;
+  wp_t v_sc;
+  wp_t v_nc; 
+  wp_t u_ec;
+  wp_t u_wc;
+  wp_t uu_e; 
+  wp_t uu_w; 
+  wp_t uu_s; 
+  wp_t uu_n;
+  wp_t vv_e;
+  wp_t vv_w; 
+  wp_t vv_s; 
+  wp_t vv_n;
+  wp_t depe;
+  wp_t depw; 
+  wp_t deps; 
+  wp_t depn;
+  wp_t dudx_e; 
+  wp_t dudy_n; 
+  wp_t dvdx_e; 
+  wp_t dvdy_n;
+  wp_t dudx_w; 
+  wp_t dudy_s;
+  wp_t dvdx_w; 
+  wp_t dvdy_s;
+  wp_t adv; 
+  wp_t vis; 
+  wp_t hpg;
+  wp_t cor;
+  static const wp_t pi = 3.1415926535897932;
+  static const wp_t g = 9.80665;
+  static const wp_t omega = 7.292116e-05;
+  static const wp_t d2r = pi/180.;
 
   printf("START C\n");
 
-  for ( jj = 1; jj <= jpj; ++jj )
+  if ( (jj <= jpj) && (ji < jpi) )
+  for ( jj = 1; ; ++jj )
   {
-    for ( ji = 1; ji < jpi; ++ji )
+    for ( ji = 1; ; ++ji )
     {
 
       if (pt(ji,jj) + pt(ji+1,jj) <= 0) {} // jump over non-computatinal domain
