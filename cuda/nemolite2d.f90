@@ -163,6 +163,11 @@ PROGRAM nemolite2d
     call model_write_log("('va checksum = ',E16.8)", &
                          field_checksum(va(1:jpiglo, 1:jpjglo)))
 
+    call model_write_log("('ua_cuda checksum = ',E16.8)", &
+                         field_checksum(ua_cuda(1:jpiglo, 1:jpjglo)))
+    call model_write_log("('va_cuda checksum = ',E16.8)", &
+                         field_checksum(va_cuda(1:jpiglo, 1:jpjglo)))
+
     !! finalise the model run
     CALL finalisation
 
@@ -491,6 +496,7 @@ CONTAINS
         IF (MOD(istp, irecord) == 0) THEN
             CALL cuda_retrieve_results(sshn_cuda, un_cuda, vn_cuda, ua_cuda, va_cuda, jpi, jpj)
             CALL output
+            CALL output_cuda
         END IF
 
     END SUBROUTINE step
