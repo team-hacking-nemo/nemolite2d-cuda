@@ -82,7 +82,7 @@ PROGRAM nemolite2d
     !! setup model initial condition
     CALL initialisation
 
-    CALL cuda_initialise_grid()
+    CALL cuda_initialise_grid
 
     istp = 0
     CALL output
@@ -106,6 +106,8 @@ PROGRAM nemolite2d
 
     !! finalise the model run
     CALL finalisation
+
+    CALL cuda_finalise
 
     WRITE (*, *) 'Simulation finished!!'
 !-----------------------------------

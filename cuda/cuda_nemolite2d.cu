@@ -205,7 +205,7 @@ extern "C"
 
   void cuda_next_() { k_next<<<1, 10>>>(); }
 
-  void cuda_finalise_() { finalise(); }
+  void cuda_finalise_();
 };
 
 GridConstants grid_constants;
@@ -509,10 +509,8 @@ k_next()
 }
 
 void
-finalise()
+cuda_finalise_()
 {
-  cudaError_t cudaStatus;
-
   // Clean up grid constants arrays.
   delete grid_constants.e1t;
   delete grid_constants.e2t;
@@ -556,8 +554,6 @@ finalise()
   delete simulation_vars.ua;
   delete simulation_vars.va;
 
-  cudaStatus = cudaDeviceReset();
-  if (cudaStatus != cudaSuccess) {
-    fprintf(stderr, "CUDA device reset failed.");
-  }
+  cudaError_t cudaStatus = cudaDeviceReset();
+  assert(cudaStatus == cudaSuccess);
 }
