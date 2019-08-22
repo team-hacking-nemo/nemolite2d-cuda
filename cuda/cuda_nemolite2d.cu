@@ -9,7 +9,49 @@
 // Working precision
 typedef double wp_t;
 
-// <<<number_of_blocks, size_of_block>>>
+#define CUDACHECK(ans)                                                         \
+  {                                                                            \
+    gpu_assert((ans), __FILE__, __LINE__);                                     \
+  }
+
+inline void
+gpu_assert(cudaError_t code, const char* file, int line, bool abort = true)
+{
+  if (code != cudaSuccess) {
+    fprintf(
+      stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+    if (abort) {
+      exit(code);
+    }
+  }
+}
+
+inline void
+get_kernel_dims(const int max_x,
+                const int max_y,
+                dim3& out_blocksize,
+                dim3& out_gridsize)
+{
+
+  // Suggest block dimensions. Threads per block must not exceed 1024 on most
+  // hardware, registers will probably be a limiting factor.
+  dim3 blocksize(2, 2);
+
+  // Shrink either if larger than the actual dimensions to minimise work
+  if (blocksize.x > max_x) {
+    blocksize.x = max_y;
+  }
+  if (blocksize.y > max_x) {
+    blocksize.y = max_y;
+  }
+
+  dim3 gridsize;
+  gridsize.x = (max_x + blocksize.x - 1) / blocksize.x;
+  gridsize.y = (max_y + blocksize.y - 1) / blocksize.y;
+
+  out_blocksize = blocksize;
+  out_gridsize = gridsize;
+}
 
 struct GridConstants
 {
@@ -254,10 +296,10 @@ extern "C"
   void cuda_next_();
 
   void cuda_retrieve_grid_constants_(wp_t* const out_xt,
-                                    wp_t* const out_yt,
-                                    wp_t* const out_ht,
-                                    const int jpi,
-                                    const int jpj);
+                                     wp_t* const out_yt,
+                                     wp_t* const out_ht,
+                                     const int jpi,
+                                     const int jpj);
 
   void cuda_retrieve_results_(wp_t* const out_sshn,
                               wp_t* const out_un,
@@ -344,49 +386,53 @@ cuda_initialise_grid_()
   simulation_vars.ua_buffer = new FortranArray2D<wp_t, 0, 1>(jpi, jpj);
   simulation_vars.va_buffer = new FortranArray2D<wp_t, 1, 0>(jpi, jpj);
 
+  dim3 blocksize;
+  dim3 gridsize;
+  get_kernel_dims(jpi + 2, jpj + 2, blocksize, gridsize);
+
   // Initialise simulation parameters
-  k_initialise_grid<<<jpi + 2, jpj + 2>>>(*simulation_vars.sshn,
-                                          *simulation_vars.sshn_u,
-                                          *simulation_vars.sshn_v,
+  k_initialise_grid<<<blocksize, gridsize, 0, 0>>>(*simulation_vars.sshn,
+                                                   *simulation_vars.sshn_u,
+                                                   *simulation_vars.sshn_v,
 
-                                          *grid_constants.e1t,
-                                          *grid_constants.e2t,
+                                                   *grid_constants.e1t,
+                                                   *grid_constants.e2t,
 
-                                          *grid_constants.e1u,
-                                          *grid_constants.e2u,
+                                                   *grid_constants.e1u,
+                                                   *grid_constants.e2u,
 
-                                          *grid_constants.e1f,
-                                          *grid_constants.e2f,
+                                                   *grid_constants.e1f,
+                                                   *grid_constants.e2f,
 
-                                          *grid_constants.e1v,
-                                          *grid_constants.e2v,
+                                                   *grid_constants.e1v,
+                                                   *grid_constants.e2v,
 
-                                          *grid_constants.e12t,
-                                          *grid_constants.e12u,
-                                          *grid_constants.e12v,
+                                                   *grid_constants.e12t,
+                                                   *grid_constants.e12u,
+                                                   *grid_constants.e12v,
 
-                                          *grid_constants.gphiu,
-                                          *grid_constants.gphiv,
-                                          *grid_constants.gphif,
+                                                   *grid_constants.gphiu,
+                                                   *grid_constants.gphiv,
+                                                   *grid_constants.gphif,
 
-                                          *grid_constants.xt,
-                                          *grid_constants.yt,
+                                                   *grid_constants.xt,
+                                                   *grid_constants.yt,
 
-                                          *grid_constants.ht,
-                                          *grid_constants.hu,
-                                          *grid_constants.hv,
+                                                   *grid_constants.ht,
+                                                   *grid_constants.hu,
+                                                   *grid_constants.hv,
 
-                                          *grid_constants.pt,
+                                                   *grid_constants.pt,
 
-                                          jpi,
-                                          jpj,
+                                                   jpi,
+                                                   jpj,
 
-                                          model_params.dx,
-                                          model_params.dy,
+                                                   model_params.dx,
+                                                   model_params.dy,
 
-                                          model_params.dep_const);
+                                                   model_params.dep_const);
 
-  cudaDeviceSynchronize();
+  CUDACHECK(cudaDeviceSynchronize());
 }
 
 void
@@ -425,7 +471,12 @@ cuda_continuity_()
   const int jpi = model_params.jpi;
   const int jpj = model_params.jpj;
 
-  k_continuity<<<jpi + 1, jpj + 1>>>(*simulation_vars.sshn,
+	dim3 blocksize;
+	dim3 gridsize;
+
+	get_kernel_dims(jpi + 1, jpj + 1, blocksize, gridsize);
+
+  k_continuity<<<blocksize, gridsize, 0, 0>>>(*simulation_vars.sshn,
                                      *simulation_vars.sshn_u,
                                      *simulation_vars.sshn_v,
 
@@ -457,7 +508,11 @@ cuda_boundary_conditions_(wp_t rtime)
   const int jpi = model_params.jpi;
   const int jpj = model_params.jpj;
 
-  k_boundary_conditions<<<jpi + 1, jpj + 1>>>(rtime,
+  dim3 blocksize;
+  dim3 gridsize;
+  get_kernel_dims(jpi + 1, jpj + 1, blocksize, gridsize);
+
+  k_boundary_conditions<<<blocksize, gridsize, 0, 0>>>(rtime,
 
                                               *simulation_vars.sshn_u,
                                               *simulation_vars.sshn_v,
@@ -501,7 +556,11 @@ cuda_next_()
   const int jpi = model_params.jpi;
   const int jpj = model_params.jpj;
 
-  k_next<<<jpi + 1, jpj + 1>>>(*simulation_vars.sshn,
+  dim3 blocksize;
+  dim3 gridsize;
+  get_kernel_dims(jpi + 1, jpj + 1, blocksize, gridsize);
+
+  k_next<<<blocksize, gridsize, 0, 0>>>(*simulation_vars.sshn,
                                *simulation_vars.sshn_u,
                                *simulation_vars.sshn_v,
 
@@ -525,10 +584,10 @@ cuda_next_()
 
 void
 cuda_retrieve_grid_constants_(wp_t* const out_xt,
-                             wp_t* const out_yt,
-                             wp_t* const out_ht,
-                             const int jpi,
-                             const int jpj)
+                              wp_t* const out_yt,
+                              wp_t* const out_ht,
+                              const int jpi,
+                              const int jpj)
 {
   grid_constants.xt->retrieve_data_from_device(out_xt);
   grid_constants.yt->retrieve_data_from_device(out_yt);
