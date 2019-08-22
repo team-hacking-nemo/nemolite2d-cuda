@@ -184,7 +184,7 @@ def print_speedup(individuals):
     # print(speedup_cols)
 
 
-def speedup_plot(data, args):
+def speedup_plot(data, reference_build, args):
     # Get the columns 
     columns = list(data.columns)
 
@@ -250,6 +250,14 @@ def speedup_plot(data, args):
             colour = palette[yindex % len(ycols)]
             label="{:} {:}".format(build, ycol)
             ax.plot(qdata["scale"], qdata[ycol], marker=marker, linestyle=linestyle, color=colour, label=label)
+
+    title_str = "Total speedup per build relative to {:}".format(reference_build)
+    if args.kernels:
+        title_str = "Kernel speedup per build relative to {:}".format(reference_build)
+    if args.average_runtimes:
+        title_str = "Average " + title_str[0].lower() + title_str[1:]
+
+    plt.title(title_str)
 
     plt.legend(loc='upper left')
     plt.xlabel("scale")
@@ -340,6 +348,15 @@ def line_plot(data, args):
             label="{:} {:}".format(build, ycol)
             ax.plot(qdata["scale"], qdata[ycol], marker=marker, linestyle=linestyle, color=colour, label=label)
 
+    title_str = "Total runtime per build for different problem scales"
+    if args.kernels:
+        title_str = "Kernel runtime per build for different problem scales"
+    if args.average_runtimes:
+        title_str = "Average " + title_str[0].lower() + title_str[1:]
+
+    plt.title(title_str)
+
+
     plt.legend(loc='upper left')
     plt.xlabel("scale")
     plt.ylabel("time(seconds)")
@@ -395,7 +412,9 @@ def plot(individuals, combined, args):
     if args.bar:
         return stackedbar_plot(combined, args)
     elif args.speedup:
-        return speedup_plot(combined, args)
+        reference_build = (list(individuals.values())[0])["build"].unique()[0]
+        
+        return speedup_plot(combined, reference_build, args)
     else:
         return line_plot(combined, args)
 
@@ -486,6 +505,14 @@ def stackedbar_plot(data, args):
         ax.set_xticks(xlocs)
         ax.set_xticklabels(scales)
         maximums.append(sum(ymaxes))
+
+    title_str = "Total runtime per build per scale"
+    if args.kernels:
+        title_str = "Kernel runtime per build per scale"
+    if args.average_runtimes:
+        title_str = "Average " + title_str[0].lower() + title_str[1:]
+
+    plt.suptitle(title_str)
     
     # Don't use logy for stacked bar, makes it look like all of the runtime is in the lowest block.
     # if args.logy:
