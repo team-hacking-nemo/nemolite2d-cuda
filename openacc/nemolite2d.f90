@@ -736,30 +736,43 @@ CONTAINS
         call timer_start(idxt, label='Next')
 
 ! kernel  un updating
+        !$acc parallel default(none) &
+        !$acc private(jj, jpj, ji, jpi) &
+        !$acc copyin(ua, va, ssha, ssha_u, ssha_v) &
+        !$acc copyout(un, vn, sshn, sshn_u, sshn_v) &
+        !$acc present(un, vn, sshn, sshn_u, sshn_v, pt, e12u, e12v, e12t)
+        
+        !$acc loop collapse(2)
         DO jj = 1, jpj
             DO ji = 0, jpi
                 un(ji, jj) = ua(ji, jj)
             END DO
         END DO
+        !$acc end loop
 ! end of kernel sshn_u updating.
 
 ! kernel vn updating
+        !$acc loop collapse(2)
         DO jj = 0, jpj
             DO ji = 1, jpi
                 vn(ji, jj) = va(ji, jj)
             END DO
         END DO
+        !$acc end loop
 ! end kernel vn updating.
 
 ! kernel sshn updating
+        !$acc loop collapse(2)
         DO jj = 1, jpj
             DO ji = 1, jpi
                 sshn(ji, jj) = ssha(ji, jj)
             END DO
         END DO
+        !$acc end loop
 ! end kernel sshn_u updating.
 
 ! kernel sshn_u updating
+        !$acc loop collapse(2)
         DO jj = 1, jpj
             DO ji = 0, jpi
                 IF (pt(ji, jj) + pt(ji + 1, jj) <= 0) CYCLE                              !jump over non-computational domain
@@ -773,9 +786,11 @@ CONTAINS
                 END IF
             END DO
         END DO
+        !$acc end loop
 ! end kernel sshn_u updating.
 
 ! kernel: sshn_v updating
+        !$acc loop collapse(2)
         DO jj = 0, jpj
             DO ji = 1, jpi
                 IF (pt(ji, jj) + pt(ji, jj + 1) <= 0) CYCLE                              !jump over non-computational domain
@@ -789,8 +804,10 @@ CONTAINS
                 END If
             END DO
         END DO
+        !$acc end loop
 ! end kernel sshn_v updating.
 
+        !$acc end parallel
         call timer_stop(idxt)
 
     END SUBROUTINE next
