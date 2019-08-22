@@ -226,7 +226,8 @@ cuda_initialise_grid_()
             jpj);
   }
 
-  printf("[CUDA](Host) Initialising grid constants and simluation variables.\n");
+  printf(
+    "[CUDA](Host) Initialising grid constants and simluation variables.\n");
 
   // Create and allocate the grid constants
   grid_constants.e1t = new FortranArray2D<wp_t, 1, 1>(jpi, jpj);
