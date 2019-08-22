@@ -1,3 +1,9 @@
+# Vim files
+.*.swp
+.*.swo
+*~
+.*~
+
 # Nvidia profiling output
 *.nvvp
 
