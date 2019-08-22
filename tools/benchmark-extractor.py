@@ -58,7 +58,7 @@ def cli_args():
 def validate_args(args):
     # Build the list of log files to be parsed.
     valid_files = []
-    if args.files is not None and len(args.files) > 0:
+    if args.files:
         for file_or_path in args.files:
             if os.path.isfile(file_or_path) and file_or_path.endswith(LOG_EXT):
                 valid_files.append(file_or_path)
