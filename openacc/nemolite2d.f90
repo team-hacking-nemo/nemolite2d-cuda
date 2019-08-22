@@ -334,7 +334,7 @@ CONTAINS
 !+++++++++++++++++++++++++++++++++++
 
     SUBROUTINE initialisation
-        call nvtxrangepushaargb("range_name"//char(0),int(z'ff00ffec',4))!ff00ffec==colour
+        call nvtxrangepushaargb("initialisation"//char(0),int(z'ff00ffec',4))!ff00ffec==colour
         call timer_init()
 
         ! define (or read in) initil ssh and velocity fields
@@ -385,23 +385,36 @@ CONTAINS
 !+++++++++++++++++++++++++++++++++++
 
     SUBROUTINE step
+        call nvtxrangepushaargb("step"//char(0),int(z'aaaaaaec',4))!ff00ffec==colour
         REAL(wp) :: rtime
+
 
         rtime = REAL(istp, wp)*rdt
 
         ! These three kernels can happen async independently of each other.
+        call nvtxrangepushaargb("step"//char(0),int(z'ff0000ec',4))!
         CALL continuity
+        call nvtxrangepop
+        call nvtxrangepushaargb("step"//char(0),int(z'00ff00ec',4))!
         CALL momentum
+        call nvtxrangepop
+        call nvtxrangepushaargb("step"//char(0),int(z'0000ffec',4))!
         CALL bc(rtime)  ! open and solid boundary condition
+        call nvtxrangepop
 
         ! 'Next' kernel updates the five output arrays, so they need updating on host & device.
+        call nvtxrangepushaargb("step"//char(0),int(z'ffff00ec',4))!
         CALL next
+        call nvtxrangepop
+
 
         IF (MOD(istp, irecord) == 0) THEN
             !$acc update self(un, vn, sshn, sshn_u, sshn_v)
+            call nvtxrangepushaargb("step"//char(0),int(z'00ffffec',4))!
             CALL output
+            call nvtxrangepop
         END IF
-
+        call nvtxrangepop
     END SUBROUTINE step
 
 !+++++++++++++++++++++++++++++++++++
