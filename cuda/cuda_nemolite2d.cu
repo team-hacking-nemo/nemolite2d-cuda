@@ -176,7 +176,7 @@ k_boundary_conditions();
 __global__ void
 k_momentum();
 
-void kernel_momentum(  
+__global__ void kernel_momentum(  
                       const int jpj, 
                       const int jpi,
                       const wp_t visc,
