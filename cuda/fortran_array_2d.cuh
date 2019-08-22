@@ -1,5 +1,6 @@
-#include <cstring>
+#include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
 
 #include <cuda_runtime.h>
@@ -8,30 +9,31 @@ template<typename type, int row_start_idx, int col_start_idx>
 class FortranArray2D
 {
 public:
-  __host__ FortranArray2D(const int row_end_idx,
-                          const int col_end_idx)
-                          //const int initial_value)
+  __host__ FortranArray2D(const int row_end_idx, const int col_end_idx)
+    // const int initial_value)
     : num_rows(row_end_idx - row_start_idx + 1)
     , num_cols(col_end_idx - col_start_idx + 1)
     , data_size(num_rows * num_cols * sizeof(type))
   {
+    // data_size = num_rows * num_cols * sizeof(type);
+
+    printf("Row end index: %d, column end index: %d, type size: %d",
+           row_end_idx,
+           col_end_idx,
+           sizeof(type));
+
     cudaError_t cudaStatus;
 
-    cudaStatus = cudaMalloc(&device_data, data_size);
-    if (cudaStatus != cudaSuccess) {
-      printf("Failed to allocate 2D array on device.\n");
-      exit(EXIT_FAILURE);
-    }
+    cudaStatus = cudaMalloc((void**)&device_data, data_size);
+    assert(cudaStatus == cudaSuccess);
 
-    host_data = reinterpret_cast<type*>(std::malloc(data_size));
-    std::memset(host_data, 0, data_size);
+    host_data =
+      reinterpret_cast<type*>(std::calloc(num_rows * num_cols, data_size));
 
     // Prepare the device object
-    cudaStatus = cudaMemcpy(device_data, host_data, data_size, cudaMemcpyHostToDevice);
-    if (cudaStatus != cudaSuccess) {
-      printf("Failed to copy 2D array to device.\n");
-      exit(EXIT_FAILURE);
-    }
+    cudaStatus =
+      cudaMemcpy(device_data, host_data, data_size, cudaMemcpyHostToDevice);
+    assert(cudaStatus == cudaSuccess);
   }
 
   __host__ ~FortranArray2D()
@@ -46,25 +48,21 @@ public:
     }
   }
 
-  __host__ type* retrieve_data_from_device(type* const out_data) {
+  __host__ type* retrieve_data_from_device(type* const out_data)
+  {
     cudaMemcpy(out_data, device_data, data_size, cudaMemcpyDeviceToHost);
   }
 
-  __device__ void set_value(type input_value)
+  __device__ inline type& operator()(const int i, const int j) const
   {
-    // TODO:
-  }
-
-  __device__ inline type& operator()(int i, int j)
-  {
-    return this
-      ->device_data[(i - row_start_idx) + (j - col_start_idx) * (this->num_rows)];
+    return this->device_data[(i - row_start_idx) +
+                             (j - col_start_idx) * (this->num_rows)];
   }
 
 private:
   const int num_rows;
   const int num_cols;
-  const int data_size;
+  const size_t data_size;
   type* device_data;
   type* host_data;
 };

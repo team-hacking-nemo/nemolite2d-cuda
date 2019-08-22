@@ -55,6 +55,24 @@ PROGRAM nemolite2d
     REAL(wp) :: rtmp1, rtmp2, rtmp3, rtmp4      !real temporary variables
     INTEGER(c_int) :: idxt ! Index for main-loop timer
 
+    interface 
+    subroutine cuda_setup_model(jpi, jpj, dx, dy, dep_const, nit000, nitend, irecord, rdt, cbfr, visc ) bind(C,name="cuda_setup_model_params_")
+      use, intrinsic::iso_c_binding, only : c_int, c_float, c_double
+      implicit none
+        integer(c_int), value :: jpi
+        integer(c_int), value :: jpj
+        real(c_double), value :: dx
+        real(c_double), value :: dy
+        real(c_double), value :: dep_const
+        integer(c_int), value :: nit000
+        integer(c_int), value :: nitend
+        integer(c_int), value :: irecord
+        real(c_double), value :: rdt
+        real(c_double), value :: cbfr
+        real(c_double), value :: visc
+    end subroutine
+  end interface
+
     !! read in model parameters
     CALL setup
 
@@ -63,6 +81,8 @@ PROGRAM nemolite2d
 
     !! setup model initial condition
     CALL initialisation
+
+    CALL cuda_initialise_grid()
 
     istp = 0
     CALL output
@@ -135,6 +155,20 @@ CONTAINS
 
         jpi = jpiglo
         jpj = jpjglo
+
+        call cuda_setup_model( &
+            & jpi, &
+            & jpj, &
+            & dx, &
+            & dy, &
+            & dep_const, &
+            & nit000, &
+            & nitend, &
+            & irecord, &
+            & rdt, &
+            & cbfr, &
+            & visc &
+        & )
 
         CLOSE (1)
 

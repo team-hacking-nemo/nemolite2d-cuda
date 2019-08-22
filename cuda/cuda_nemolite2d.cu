@@ -1,9 +1,10 @@
+#include <cassert>
 #include <stdint.h>
 #include <stdio.h>
 
 #include <cuda_runtime.h>
 
-#include "FortranArray2D.cu"
+#include "fortran_array_2d.cuh"
 
 // Working precision
 typedef double wp_t;
@@ -41,6 +42,8 @@ struct GridConstants
   //  0 = Land cell
   //  1 = Water cell inside computational domain
   FortranArray2D<int, 0, 0>* pt = nullptr;
+
+  GridConstants() {}
 };
 
 struct SimulationVariables
@@ -62,6 +65,8 @@ struct SimulationVariables
   // Velocities - next step's values
   FortranArray2D<wp_t, 0, 1>* ua = nullptr;
   FortranArray2D<wp_t, 1, 0>* va = nullptr;
+
+  SimulationVariables() {}
 };
 
 struct ModelParameters
@@ -97,6 +102,16 @@ struct ModelParameters
   // Horizontal kinematic viscosity coefficient
   wp_t visc = 0.0;
 };
+
+__global__ void
+k_initialise_sea_surface_height(const FortranArray2D<wp_t, 1, 1>& sshn,
+                                const FortranArray2D<wp_t, 0, 1>& sshn_u,
+                                const FortranArray2D<wp_t, 1, 0>& sshn_v,
+                                const FortranArray2D<wp_t, 1, 1>& e12t,
+                                const FortranArray2D<wp_t, 0, 1>& e12u,
+                                const FortranArray2D<wp_t, 1, 0>& e12v,
+                                const int jpi,
+                                const int jpj);
 
 __global__ void
 k_setup_model_params(const int jpi,
@@ -159,21 +174,23 @@ extern "C"
   void cuda_finalise_() { finalise(); }
 };
 
-__device__ GridConstants grid_constants;
-__device__ SimulationVariables simulation_vars;
-__device__ ModelParameters model_params;
+GridConstants grid_constants;
+SimulationVariables simulation_vars;
+
+ModelParameters host_model_params;
+ModelParameters* device_model_params;
 
 void
 cuda_initialise_grid_()
 {
-  const int jpi = model_params.jpi;
-  const int jpj = model_params.jpj;
+  const int jpi = host_model_params.jpi;
+  const int jpj = host_model_params.jpj;
 
   if (jpi == 0 || jpj == 0) {
     fprintf(stderr,
             "Invalid grid size: (%d, %d); have you setup model params?",
-            model_params.jpi,
-            model_params.jpj);
+            jpi,
+            jpj);
   }
 
   // Create and allocate the grid constants
@@ -204,7 +221,60 @@ cuda_initialise_grid_()
 
   grid_constants.pt = new FortranArray2D<int, 0, 0>(jpi + 1, jpj + 1);
 
-  // TODO: Initialise on host and memcpy over to device.
+  // Create and allocate simulation variables
+  simulation_vars.sshn = new FortranArray2D<wp_t, 1, 1>(jpi, jpj);
+  simulation_vars.sshn_u = new FortranArray2D<wp_t, 0, 1>(jpi, jpj);
+  simulation_vars.sshn_v = new FortranArray2D<wp_t, 1, 0>(jpi, jpj);
+
+  simulation_vars.ssha = new FortranArray2D<wp_t, 1, 1>(jpi, jpj);
+  simulation_vars.ssha_u = new FortranArray2D<wp_t, 0, 1>(jpi, jpj);
+  simulation_vars.ssha_v = new FortranArray2D<wp_t, 1, 0>(jpi, jpj);
+
+  simulation_vars.un = new FortranArray2D<wp_t, 0, 1>(jpi, jpj);
+  simulation_vars.vn = new FortranArray2D<wp_t, 1, 0>(jpi, jpj);
+
+  simulation_vars.ua = new FortranArray2D<wp_t, 0, 1>(jpi, jpj);
+  simulation_vars.va = new FortranArray2D<wp_t, 1, 0>(jpi, jpj);
+
+  // Initialise simulation parameters
+  k_initialise_sea_surface_height<<<jpi + 1, jpj + 1>>>(*simulation_vars.sshn,
+                                                        *simulation_vars.sshn_u,
+                                                        *simulation_vars.sshn_v,
+                                                        *grid_constants.e12t,
+                                                        *grid_constants.e12u,
+                                                        *grid_constants.e12v,
+                                                        jpi,
+                                                        jpj);
+}
+
+__global__ void
+k_initialise_sea_surface_height(const FortranArray2D<wp_t, 1, 1>& sshn,
+                                const FortranArray2D<wp_t, 0, 1>& sshn_u,
+                                const FortranArray2D<wp_t, 1, 0>& sshn_v,
+                                const FortranArray2D<wp_t, 1, 1>& e12t,
+                                const FortranArray2D<wp_t, 0, 1>& e12u,
+                                const FortranArray2D<wp_t, 1, 0>& e12v,
+                                const int jpi,
+                                const int jpj)
+{
+  int ji = threadIdx.x * blockIdx.x + blockDim.x;
+  int jj = threadIdx.y * blockIdx.y + blockDim.y;
+
+  if (ji <= jpi && jj > 0 && jj <= jpj) {
+    int itmp1 = min(ji + 1, jpi);
+    int itmp2 = max(ji, 1);
+    wp_t rtmp1 =
+      e12t(itmp1, jj) * sshn(itmp1, jj) + e12t(itmp2, jj) * sshn(itmp2, jj);
+    sshn_u(ji, jj) = 0.5 * rtmp1 / e12u(ji, jj);
+  }
+
+  if (ji > 0 && ji <= jpi && jj <= jpj) {
+    int itmp1 = min(jj + 1, jpj);
+    int itmp2 = max(jj, 1);
+    wp_t rtmp1 =
+      e12t(ji, itmp1) * sshn(ji, itmp1) + e12t(ji, itmp2) * sshn(ji, itmp2);
+    sshn_v(ji, jj) = 0.5 * rtmp1 / e12v(ji, jj);
+  }
 }
 
 void
@@ -220,25 +290,9 @@ cuda_setup_model_params_(int jpi,
                          wp_t cbfr,
                          wp_t visc)
 {
-  k_setup_model_params<<<1, 1>>>(
-    jpi, jpj, dx, dy, dep_const, nit000, nitend, irecord, rdt, cbfr, visc);
-}
+  printf("Initialising model params. jpi = %d\n", jpi);
 
-__global__ void
-k_setup_model_params(const int jpi,
-                     const int jpj,
-                     const wp_t dx,
-                     const wp_t dy,
-                     const wp_t dep_const,
-                     const int nit000,
-                     const int nitend,
-                     const int irecord,
-                     const wp_t rdt,
-                     const wp_t cbfr,
-                     const wp_t visc)
-{
-  printf("Initialising model parameters on device.\n");
-  model_params = {
+  host_model_params = {
     .jpi = jpi,
     .jpj = jpj,
     .dx = dx,
@@ -251,6 +305,17 @@ k_setup_model_params(const int jpi,
     .cbfr = cbfr,
     .visc = visc,
   };
+
+  cudaError_t cudaStatus;
+
+  cudaStatus = cudaMalloc(&device_model_params, sizeof(ModelParameters));
+  assert(cudaStatus == cudaSuccess);
+
+  cudaStatus = cudaMemcpy(device_model_params,
+                          &host_model_params,
+                          sizeof(ModelParameters),
+                          cudaMemcpyHostToDevice);
+  assert(cudaStatus == cudaSuccess);
 }
 
 __global__ void
@@ -282,6 +347,7 @@ finalise()
 {
   cudaError_t cudaStatus;
 
+  // Clean up grid constants arrays.
   delete grid_constants.e1t;
   delete grid_constants.e2t;
   delete grid_constants.e1u;
@@ -309,7 +375,20 @@ finalise()
 
   delete grid_constants.pt;
 
-  // TODO: Delete simulation params arrays.
+  // Clean up simulation params arrays.
+  delete simulation_vars.sshn;
+  delete simulation_vars.sshn_u;
+  delete simulation_vars.sshn_v;
+
+  delete simulation_vars.ssha;
+  delete simulation_vars.ssha_u;
+  delete simulation_vars.ssha_v;
+
+  delete simulation_vars.un;
+  delete simulation_vars.vn;
+
+  delete simulation_vars.ua;
+  delete simulation_vars.va;
 
   cudaStatus = cudaDeviceReset();
   if (cudaStatus != cudaSuccess) {
