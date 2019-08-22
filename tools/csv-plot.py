@@ -114,7 +114,7 @@ def validate_args(args):
             else:
                 print("Warning: Provided file {:} does not exist".format(file_or_path))
     # Remove duplicates from valid files and sort
-    valid_files = list(set(valid_files))
+    valid_files = list(OrderedDict.fromkeys(valid_files))
 
     if valid_files is None or len(valid_files) == 0:
         print("Error: No valid files provided.")
@@ -159,7 +159,7 @@ def parse_files(files, scalelim):
     return dfs, combined
 
 
-def print_speedup(individuals):
+def print_speedup(individuals, args):
     print("Speedup:")
 
     for k in list(individuals.keys())[1:]:
@@ -545,7 +545,7 @@ def main():
 
     # Print the speedup
     if args.print_speedup:
-        print_speedup(individuals)
+        print_speedup(individuals, args)
 
     # Return the success of the function. True == success. 
     return plotted
