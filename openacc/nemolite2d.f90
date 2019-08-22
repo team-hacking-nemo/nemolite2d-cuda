@@ -72,7 +72,9 @@ PROGRAM nemolite2d
     CALL initialisation
 
     istp = 0
+    call nvtxrangepushaargb("output"//char(0),int(z'aaaaaaec',4))!ff00ffec==colour
     CALL output
+    call nvtxrangepop
 
     call timer_start(idxt, label='Time-stepping', &
                      num_repeats=INT(nitend - nit000 + 1, 8))
@@ -91,13 +93,18 @@ PROGRAM nemolite2d
     call timer_stop(idxt)
 
     ! Compute and output some checksums for error checking
+    call nvtxrangepushaargb("checksum"//char(0),int(z'aaaaaaec',4))!
     call model_write_log("('ua checksum = ',E16.8)", &
                          field_checksum(ua(1:jpiglo, 1:jpjglo)))
     call model_write_log("('va checksum = ',E16.8)", &
                          field_checksum(va(1:jpiglo, 1:jpjglo)))
+    call nvtxrangepop
 
     !! finalise the model run
+    call nvtxrangepushaargb("finalisation"//char(0),int(z'aaaaaaec',4))!
     CALL finalisation
+    call nvtxrangepop
+
 
     WRITE (*, *) 'Simulation finished!!'
 !-----------------------------------
@@ -107,6 +114,8 @@ CONTAINS
 
     SUBROUTINE setup
         INTEGER :: ios
+
+        call nvtxrangepushaargb("setup"//char(0),int(z'aaaaaaec',4))!ff00ffec==colour
 
         !! Read in model setup parameters
         NAMELIST /namctl/ jpiglo, jpjglo, jphgr_msh, &
@@ -150,6 +159,9 @@ CONTAINS
 
         CLOSE (1)
 
+        call nvtxrangepop
+
+
     END SUBROUTINE setup
 
 !+++++++++++++++++++++++++++++++++++
@@ -161,6 +173,8 @@ CONTAINS
 
         !jphgr_msh = 0    ! read in this from a namelist file
         !jphgr_msh = 1    ! define manually
+
+        call nvtxrangepushaargb("grid"//char(0),int(z'aaaaaaec',4))!ff00ffec==colour
 
         SELECT CASE (jphgr_msh)
 
@@ -290,6 +304,8 @@ CONTAINS
             END DO
         END DO
 
+        call nvtxrangepop
+
     END SUBROUTINE grid
 
 !+++++++++++++++++++++++++++++++++++
@@ -298,6 +314,8 @@ CONTAINS
         !! Read in model setup parameters and allocate working arrays
         INTEGER :: ierr(11)
         REAL(wp) :: init_val
+
+        call nvtxrangepushaargb("allocation"//char(0),int(z'ff00ffec',4))!ff00ffec==colour
 
         ALLOCATE (e1t(jpi, jpj), e2t(jpi, jpj), e1u(0:jpi, jpj), e2u(0:jpi, jpj), STAT=ierr(1))
         ALLOCATE (e1f(0:jpi, 0:jpj), e2f(0:jpi, 0:jpj), e1v(jpi, 0:jpj), e2v(jpi, 0:jpj), STAT=ierr(2))
@@ -328,6 +346,7 @@ CONTAINS
         un = init_val; vn = init_val; ua = init_val; va = init_val
         xt = init_val; yt = init_val
         pt = init_val
+        call nvtxrangepop
 
     END SUBROUTINE allocation
 
@@ -392,25 +411,25 @@ CONTAINS
         rtime = REAL(istp, wp)*rdt
 
         ! These three kernels can happen async independently of each other.
-        call nvtxrangepushaargb("step"//char(0),int(z'ff0000ec',4))!
+        call nvtxrangepushaargb("continuity"//char(0),int(z'ff0000ec',4))!
         CALL continuity
         call nvtxrangepop
-        call nvtxrangepushaargb("step"//char(0),int(z'00ff00ec',4))!
+        call nvtxrangepushaargb("momentum"//char(0),int(z'00ff00ec',4))!
         CALL momentum
         call nvtxrangepop
-        call nvtxrangepushaargb("step"//char(0),int(z'0000ffec',4))!
+        call nvtxrangepushaargb("bc"//char(0),int(z'0000ffec',4))!
         CALL bc(rtime)  ! open and solid boundary condition
         call nvtxrangepop
 
         ! 'Next' kernel updates the five output arrays, so they need updating on host & device.
-        call nvtxrangepushaargb("step"//char(0),int(z'ffff00ec',4))!
+        call nvtxrangepushaargb("nex"//char(0),int(z'ffff00ec',4))!
         CALL next
         call nvtxrangepop
 
 
         IF (MOD(istp, irecord) == 0) THEN
             !$acc update self(un, vn, sshn, sshn_u, sshn_v)
-            call nvtxrangepushaargb("step"//char(0),int(z'00ffffec',4))!
+            call nvtxrangepushaargb("output"//char(0),int(z'00ffffec',4))!
             CALL output
             call nvtxrangepop
         END IF
