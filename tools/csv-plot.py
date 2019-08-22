@@ -13,6 +13,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from collections import OrderedDict
 import seaborn as sns
+import tabulate
 
 EXIT_FAILURE = 1
 EXIT_SUCCESS = 0
@@ -143,6 +144,26 @@ def parse_files(files, scalelim):
 
 def print_speedup(individuals):
     print("Total Speedup:")
+
+    for k in list(individuals.keys())[1:]:
+        speedup_cols = []
+        df = individuals[k]
+        for col in df.columns:
+            if "speedup" in col and "total" in col and col not in speedup_cols:
+                speedup_cols.append(col)
+
+        # Construct a new data frame with just the speedup cols and the index. 
+        build = df["build"].unique()
+        cols = ["scale"] + speedup_cols
+        speedupdf = df[cols]
+
+        print("Speedup for {:}".format(build[0]))
+        # for index, row in speedupdf.iterrows():
+            # print(index, int(row["scale"]), row["speedup_time_stepping_total"])#, row["speedup_+"])
+        print(tabulate.tabulate(speedupdf.values,speedupdf.columns, tablefmt="pipe"))
+
+
+    # print(speedup_cols)
 
 
 def speedup_plot(data, args):
