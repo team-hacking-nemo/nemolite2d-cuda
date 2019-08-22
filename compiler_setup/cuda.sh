@@ -25,3 +25,5 @@ export LD_LIBRARY_PATH="$CUDA_LIB:$LD_LIBRARY_PATH"
 export CUDA_ARCH=sm_70
 
 echo "CUDA home directory: $CUDA_HOME"
+
+export NVCC_FLAGS=" -O3 -std=c++14 -use_fast_math -arch=$CUDA_ARCH --ptxas-options=-v -lineinfo"
