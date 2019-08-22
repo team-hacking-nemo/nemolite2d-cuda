@@ -1,7 +1,6 @@
 # Build settings for gfortran compiler
 F90=gfortran
 CC=gcc
-NVCC=nvcc
 
 CFLAGS="-O3"
 F90FLAGS="-Wall -Wsurprising -Wuninitialized"
@@ -28,6 +27,3 @@ export OMPFLAGS
 export LDFLAGS
 export AR
 export CC
-export NVCC
-export NVCC_FLAGS
-

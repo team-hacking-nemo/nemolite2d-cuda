@@ -44,7 +44,7 @@ cuda_nemolite2d.o: $(COMMON_MODULES) $(CUDA_HEADERS)
 # Generic rules
 
 %.exe: $(MODULE_LIST)
-	$(F90) $(OMPFLAGS) -o $@ $(MODULE_LIST) $(TIMER_LIB) $(LDFLAGS) -L$(CUDA_LIB) -lcudart -lstdc++
+	$(F90) $(OMPFLAGS) -o $@ $(MODULE_LIST) $(TIMER_LIB) $(LDFLAGS) -L$(CUDA_LIB) $(LDFLAGS)
 
 %.o: %.f90
 	$(F90) $(F90FLAGS) -I${INF_INC} -I${TIMER_INC} -c $<
@@ -53,7 +53,7 @@ cuda_nemolite2d.o: $(COMMON_MODULES) $(CUDA_HEADERS)
 	$(F90) $(F90FLAGS) -I${INF_INC} -I${TIMER_INC} -c $<
 
 %.o: %.cu
-	$(NVCC) $(NVCC_FLAGS) -c -I$(CUDA_INC) $<
+	$(NVCC) $(NVCCFLAGS) -c -I$(CUDA_INC) $<
 
 # Cleaning up
 
