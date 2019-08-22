@@ -379,7 +379,7 @@ CONTAINS
 
     SUBROUTINE allocation
         !! Read in model setup parameters and allocate working arrays
-        INTEGER(c_int) :: ierr(11)
+        INTEGER(c_int) :: ierr(15)
         REAL(wp) :: init_val
 
         ALLOCATE (e1t(jpi, jpj), e2t(jpi, jpj), e1u(0:jpi, jpj), e2u(0:jpi, jpj), STAT=ierr(1))
