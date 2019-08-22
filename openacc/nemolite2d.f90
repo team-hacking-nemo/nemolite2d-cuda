@@ -385,8 +385,8 @@ CONTAINS
 !+++++++++++++++++++++++++++++++++++
 
     SUBROUTINE step
-        call nvtxrangepushaargb("step"//char(0),int(z'aaaaaaec',4))!ff00ffec==colour
         REAL(wp) :: rtime
+        call nvtxrangepushaargb("step"//char(0),int(z'aaaaaaec',4))!ff00ffec==colour
 
 
         rtime = REAL(istp, wp)*rdt
