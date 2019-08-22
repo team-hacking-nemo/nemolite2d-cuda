@@ -64,7 +64,8 @@ PROGRAM nemolite2d
 
     ! Copy in the grid variables
     !$acc enter data &
-    !$acc copyin(ssha_u, ssha_v, e1t, e2t, e1u, e2u, e1v, e2v, e1f, e2f, e12t, e12u, e12v, pt, gphiu, gphiv, gphif, xt, yt, ht, hu, hv)
+    !$acc copyin(ssha_u, ssha_v, e1t, e2t, e1u, e2u, e1v, e2v, e1f, e2f, e12t, e12u, e12v, pt, gphiu, gphiv, gphif, xt, yt, ht, hu, hv) &
+    !$acc create(ssha)
 
     !! setup model initial condition
     CALL initialisation
@@ -75,15 +76,15 @@ PROGRAM nemolite2d
     call timer_start(idxt, label='Time-stepping', &
                      num_repeats=INT(nitend - nit000 + 1, 8))
 
-    !$acc enter data copyin(un, vn, sshn, sshn_u, sshn_v)
-
+    !$acc enter data copyin(un, vn, sshn, sshn_u, sshn_v) &
+    !$acc create (ua, va)
     !! time stepping
     DO istp = nit000, nitend, 1
         !print*, 'istp == ', istp
         CALL step
     END DO
 
-    !$acc exit data copyout(un, vn, sshn, sshn_u, sshn_v)
+    !$acc exit data copyout(ua, va, un, vn, sshn, sshn_u, sshn_v)
     !$acc exit data
 
     call timer_stop(idxt)
@@ -411,7 +412,8 @@ CONTAINS
         call timer_start(idxt, label='Continuity')
 
 !kernel continuity
-        !$acc parallel
+        !$acc parallel &
+        !$acc present(hu, hv, un, vn, sshn, e12t, ssha, sshn_u, sshn_v)
         !$acc loop collapse(2)
         DO jj = 1, jpj
             DO ji = 1, jpi
@@ -448,9 +450,10 @@ CONTAINS
 
         call timer_start(idxt, label='Momentum')
 
-        !$acc parallel default(none) copy(ua, va) &
+        !$acc parallel default(none) &
         !$acc private(jj, jpj, ji, jpi, u_e, u_w, v_s, v_n, v_sc, v_nc, u_ec, u_wc, uu_e, uu_w, uu_s, uu_n, vv_e, vv_w, vv_s, vv_n, depe, depw, deps, depn, dudx_e, dudy_n, dvdx_e, dvdy_n, dudx_w, dudy_s, dvdx_w, dvdy_s, adv, vis, hpg, cor) &
-        !$acc present(ssha_u, ssha_v, e1t, e2t, e1u, e2u, e1v, e2v, e1f, e2f, e12t, e12u, e12v, pt, gphiu, gphiv, gphif, xt, yt, ht, hu, hv, un, vn, sshn, sshn_u, sshn_v)
+        !$acc present(ssha_u, ssha_v, e1t, e2t, e1u, e2u, e1v, e2v, e1f, e2f, e12t, e12u, e12v) &
+	!$acc present(pt, gphiu, gphiv, gphif, xt, yt, ht, hu, hv, un, vn, sshn, sshn_u, sshn_v, ua, va)
 
         ! u equation
         !$acc loop collapse(2)
@@ -654,9 +657,12 @@ CONTAINS
 
         call timer_start(idxt, label='BCs')
 
-        !$acc parallel
-        !open boundary condition of clamped ssh
+        !$acc parallel &
+	!$acc present(hu, sshn_u, ssha, ua, va, sshn_v, hv, pt)
 
+        !660, Generating implicit copyin(hu(0:jpi,1:jpj),sshn_u(:,1:jpj)),Generating implicit copy(ssha(1:jpi,1:jpj),ua(:,1:jpj),va(1:jpi,:))
+	!Generating implicit copyin(sshn_v(1:jpi,:),hv(1:jpi,0:jpj),pt(0:jpi+1,0:jpj+1))
+        !open boundary condition of clamped ssh
 !kernel ssh clamped obc
         amp_tide = 0.2_wp
         omega_tide = 2.0_wp*3.14159_wp/(12.42_wp*3600._wp)
@@ -754,8 +760,7 @@ CONTAINS
 ! kernel  un updating
         !$acc parallel default(none) &
         !$acc private(jj, jpj, ji, jpi) &
-        !$acc copyin(ua, va, ssha, ssha_u, ssha_v) &
-        !$acc copyout(un, vn, sshn, sshn_u, sshn_v) &
+	!$acc present(ua, va, ssha, ssha_u, ssha_v) &
         !$acc present(un, vn, sshn, sshn_u, sshn_v, pt, e12u, e12v, e12t)
         
         !$acc loop collapse(2)
