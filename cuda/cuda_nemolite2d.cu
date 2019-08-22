@@ -301,14 +301,24 @@ SimulationVariables simulation_vars;
 
 ModelParameters model_params;
 
-__device__ const wp_t pi = 3.1415926535897932;
-__device__ const wp_t g = 9.80665;          // Gravity
-__device__ const wp_t omega = 7.292116e-05; // Earth rotation speed (s^(-1))
-__device__ const wp_t d2r = pi / 180.0;     // Degrees to radians
+__device__ __constant__ wp_t pi;
+__device__ __constant__ wp_t g; // Gravity
+__device__ __constant__ wp_t omega; // Earth rotation speed (s^(-1))
+__device__ __constant__ wp_t d2r; // Degrees to radians
 
 void
 cuda_initialise_grid_()
 {
+	const wp_t host_pi = 3.1415926535897932;
+	const wp_t host_g = 9.80665;
+	const wp_t host_omega =  7.292116e-05;
+	const wp_t host_d2r = host_pi / 180.0;
+
+	CUDACHECK(cudaMemcpyToSymbol(pi, &host_pi, sizeof(pi)));
+	CUDACHECK(cudaMemcpyToSymbol(g, &host_g, sizeof(g)));
+	CUDACHECK(cudaMemcpyToSymbol(omega, &host_omega, sizeof(omega)));
+	CUDACHECK(cudaMemcpyToSymbol(d2r, &host_d2r, sizeof(d2r)));
+
   const int jpi = model_params.jpi;
   const int jpj = model_params.jpj;
 
@@ -320,7 +330,7 @@ cuda_initialise_grid_()
   }
 
   printf(
-    "[CUDA](Host) Initialising grid constants and simluation variables.\n");
+    "[CUDA](Host) Initialising grid constants and simulation variables.\n");
 
   // Create and allocate the grid constants
   grid_constants.e1t = new FortranArray2D<wp_t, 1, 1>(jpi, jpj);
