@@ -27,7 +27,8 @@ export NVCC=nvcc
 
 export NVCCFLAGS=" -O3 -std=c++14 -use_fast_math -arch=$CUDA_ARCH --ptxas-options=-v -lineinfo"
 export OMPFLAGS=" -fopenmp"
-export LDFLAGS="-lcudart -lstdc++"
+export LDFLAGS=""
+export CUDA_LDFLAGS="-lcudart -lstdc++"
 
 F90FLAGS=""
 F90FLAGS+=" -Wall -Wsurprising -Wuninitialized"
