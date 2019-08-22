@@ -476,6 +476,9 @@ cuda_finalise_()
   delete simulation_vars.ua;
   delete simulation_vars.va;
 
+  delete simulation_vars.ua_buffer;
+  delete simulation_vars.va_buffer;
+
   cudaError_t cudaStatus = cudaDeviceReset();
   assert(cudaStatus == cudaSuccess);
 }
