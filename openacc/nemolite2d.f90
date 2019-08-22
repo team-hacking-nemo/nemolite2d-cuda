@@ -411,6 +411,8 @@ CONTAINS
         call timer_start(idxt, label='Continuity')
 
 !kernel continuity
+        !$acc parallel
+        !$acc loop collapse(2)
         DO jj = 1, jpj
             DO ji = 1, jpi
                 rtmp1 = (sshn_u(ji, jj) + hu(ji, jj))*un(ji, jj)
@@ -420,6 +422,8 @@ CONTAINS
                 ssha(ji, jj) = sshn(ji, jj) + (rtmp2 - rtmp1 + rtmp4 - rtmp3)*rdt/e12t(ji, jj)
             END DO
         END DO
+        !$acc end loop
+        !$acc end parallel
 !end kernel continuity
 
         call timer_stop(idxt)
@@ -650,11 +654,13 @@ CONTAINS
 
         call timer_start(idxt, label='BCs')
 
+        !$acc parallel
         !open boundary condition of clamped ssh
 
 !kernel ssh clamped obc
         amp_tide = 0.2_wp
         omega_tide = 2.0_wp*3.14159_wp/(12.42_wp*3600._wp)
+        !$acc loop collapse(2)
         DO jj = 1, jpj
             DO ji = 1, jpi
                 IF (pt(ji, jj) <= 0) CYCLE
@@ -666,26 +672,32 @@ CONTAINS
                     ssha(ji, jj) = amp_tide*sin(omega_tide*rtime)
                 ELSE IF (pt(ji - 1, jj) < 0) THEN
                     ssha(ji, jj) = amp_tide*sin(omega_tide*rtime)
-                END IF
-            END DO
+            END IF
         END DO
+        END DO
+        !$acc end loop
 !end kernel ssh clamped obc
 
 ! kernel"solid boundary conditions for u-velocity"
+        !$acc loop collapse(2)
         DO jj = 1, jpj
             DO ji = 0, jpi
                 IF (pt(ji, jj)*pt(ji + 1, jj) == 0) ua(ji, jj) = 0._wp
             END DO
         END DO
+        !$acc end loop
 !end kernel "solid boundary conditions for u-velocity"
 
 !kernel "solid boundary conditions for v-velocity"
+        !$acc loop collapse(2)
         DO jj = 0, jpj
             DO ji = 1, jpi
                 IF (pt(ji, jj)*pt(ji, jj + 1) == 0) va(ji, jj) = 0._wp
             END DO
         END DO
+        !$acc end loop
 !end kernel "solid boundary conditions for v-velocity"
+             
 
         !                                            Du                 Dssh
         !start of "Flather open boundary condition [---- = sqrt(g/H) * ------]" Kernel
@@ -693,6 +705,7 @@ CONTAINS
         ! ua and va in du/dn should be the specified tidal forcing
 
 ! kernel Flather u
+        !$acc loop collapse(2)
         DO jj = 1, jpj
             DO ji = 0, jpi
                 IF (pt(ji, jj) + pt(ji + 1, jj) <= -1) CYCLE                         ! not in the domain
@@ -703,11 +716,13 @@ CONTAINS
                     jiu = ji - 1
                     ua(ji, jj) = ua(jiu, jj) + SQRT(g/hu(ji, jj))*(sshn_u(ji, jj) - sshn_u(jiu, jj))
                 END IF
-            END DO
+                END DO
         END DO
+        !$acc end loop
 !end kernel flather u .
 
 !kernel Flather v
+!$acc loop collapse(2)
         DO jj = 0, jpj
             DO ji = 1, jpi
                 IF (pt(ji, jj) + pt(ji, jj + 1) <= -1) CYCLE                         ! not in the domain
@@ -720,8 +735,9 @@ CONTAINS
                 END IF
             END DO
         END DO
+        !$acc end loop
 !end kernel flather v .
-
+        !$acc end parallel
         call timer_stop(idxt)
 
     END SUBROUTINE bc
