@@ -26,7 +26,7 @@ all: $(EXECS)
 
 # Normal targets
 nemolite2d: inf_lib timer_lib
-	${MAKE} MODULE_LIST="nemolite2d.o ${COMMON_MODULES}" nemolite2d.exe
+	${MAKE} MODULE_LIST="nemolite2d.o nvtx.o nvtx_wrapper.o${COMMON_MODULES}" nemolite2d.exe
 
 timer_lib:
 	${MAKE} -C ${TIMER_DIR} sm_lib
@@ -34,7 +34,7 @@ timer_lib:
 inf_lib:
 	${MAKE} -C ${INF_DIR}
 
-nemolite2d.o: $(COMMON_MODULES)
+nemolite2d.o: $(COMMON_MODULES) nvtx.o nvtx_wrapper.o 
 
 # Generic rules
 
@@ -46,6 +46,9 @@ nemolite2d.o: $(COMMON_MODULES)
 
 %.o: %.F90
 	$(F90) $(F90FLAGS) -I${INF_INC} -I${TIMER_INC} -c $<
+
+%.o: %.cpp
+	$(CC) $(CCFLAGS) -c $<
 
 # Cleaning up
 

@@ -6,6 +6,7 @@ PROGRAM nemolite2d
     use dl_timer
     use field_mod, only: field_checksum
     use gocean_mod, only: model_write_log
+    use nvtx, only: nvtxrangepushaargb, nvtxrangepop
     IMPLICIT NONE
 
     INTEGER, PARAMETER :: sp = c_float
@@ -333,7 +334,7 @@ CONTAINS
 !+++++++++++++++++++++++++++++++++++
 
     SUBROUTINE initialisation
-
+        call nvtxrangepushaargb("range_name"//char(0),int(z'ff00ffec',4))!ff00ffec==colour
         call timer_init()
 
         ! define (or read in) initil ssh and velocity fields
@@ -378,7 +379,7 @@ CONTAINS
 ! This call updates 'a' quantities which are not used before the code
 ! in step again updates them. Therefore I think it does nothing. ARP.
 !            CALL bc(0._wp)
-
+        call nvtxrangepop
     END SUBROUTINE initialisation
 
 !+++++++++++++++++++++++++++++++++++
