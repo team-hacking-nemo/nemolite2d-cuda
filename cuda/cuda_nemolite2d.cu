@@ -4,8 +4,8 @@
 
 #include <cuda_runtime.h>
 
-#include "fortran_array_2d.cuh"
 #include "cuda_utils.cuh"
+#include "fortran_array_2d.cuh"
 
 // Working precision
 typedef double wp_t;
@@ -302,22 +302,22 @@ SimulationVariables simulation_vars;
 ModelParameters model_params;
 
 __device__ __constant__ wp_t pi;
-__device__ __constant__ wp_t g; // Gravity
+__device__ __constant__ wp_t g;     // Gravity
 __device__ __constant__ wp_t omega; // Earth rotation speed (s^(-1))
-__device__ __constant__ wp_t d2r; // Degrees to radians
+__device__ __constant__ wp_t d2r;   // Degrees to radians
 
 void
 cuda_initialise_grid_()
 {
-	const wp_t host_pi = 3.1415926535897932;
-	const wp_t host_g = 9.80665;
-	const wp_t host_omega =  7.292116e-05;
-	const wp_t host_d2r = host_pi / 180.0;
+  const wp_t host_pi = 3.1415926535897932;
+  const wp_t host_g = 9.80665;
+  const wp_t host_omega = 7.292116e-05;
+  const wp_t host_d2r = host_pi / 180.0;
 
-	CUDACHECK(cudaMemcpyToSymbol(pi, &host_pi, sizeof(pi)));
-	CUDACHECK(cudaMemcpyToSymbol(g, &host_g, sizeof(g)));
-	CUDACHECK(cudaMemcpyToSymbol(omega, &host_omega, sizeof(omega)));
-	CUDACHECK(cudaMemcpyToSymbol(d2r, &host_d2r, sizeof(d2r)));
+  CUDACHECK(cudaMemcpyToSymbol(pi, &host_pi, sizeof(pi)));
+  CUDACHECK(cudaMemcpyToSymbol(g, &host_g, sizeof(g)));
+  CUDACHECK(cudaMemcpyToSymbol(omega, &host_omega, sizeof(omega)));
+  CUDACHECK(cudaMemcpyToSymbol(d2r, &host_d2r, sizeof(d2r)));
 
   const int jpi = model_params.jpi;
   const int jpj = model_params.jpj;
@@ -465,29 +465,29 @@ cuda_continuity_()
   const int jpi = model_params.jpi;
   const int jpj = model_params.jpj;
 
-	dim3 blocksize;
-	dim3 gridsize;
+  dim3 blocksize;
+  dim3 gridsize;
 
-	get_kernel_dims(jpi + 1, jpj + 1, blocksize, gridsize);
+  get_kernel_dims(jpi + 1, jpj + 1, blocksize, gridsize);
 
   k_continuity<<<blocksize, gridsize, 0, 0>>>(*simulation_vars.sshn,
-                                     *simulation_vars.sshn_u,
-                                     *simulation_vars.sshn_v,
+                                              *simulation_vars.sshn_u,
+                                              *simulation_vars.sshn_v,
 
-                                     *simulation_vars.ssha,
+                                              *simulation_vars.ssha,
 
-                                     *simulation_vars.un,
-                                     *simulation_vars.vn,
+                                              *simulation_vars.un,
+                                              *simulation_vars.vn,
 
-                                     *grid_constants.hu,
-                                     *grid_constants.hv,
+                                              *grid_constants.hu,
+                                              *grid_constants.hv,
 
-                                     *grid_constants.e12t,
+                                              *grid_constants.e12t,
 
-                                     jpi,
-                                     jpj,
+                                              jpi,
+                                              jpj,
 
-                                     model_params.rdt);
+                                              model_params.rdt);
 }
 
 void
@@ -506,26 +506,27 @@ cuda_boundary_conditions_(wp_t rtime)
   dim3 gridsize;
   get_kernel_dims(jpi + 1, jpj + 1, blocksize, gridsize);
 
-  k_boundary_conditions<<<blocksize, gridsize, 0, 0>>>(rtime,
+  k_boundary_conditions<<<blocksize, gridsize, 0, 0>>>(
+    rtime,
 
-                                              *simulation_vars.sshn_u,
-                                              *simulation_vars.sshn_v,
+    *simulation_vars.sshn_u,
+    *simulation_vars.sshn_v,
 
-                                              *simulation_vars.ssha,
+    *simulation_vars.ssha,
 
-                                              *simulation_vars.ua,
-                                              *simulation_vars.va,
+    *simulation_vars.ua,
+    *simulation_vars.va,
 
-                                              *simulation_vars.ua_buffer,
-                                              *simulation_vars.va_buffer,
+    *simulation_vars.ua_buffer,
+    *simulation_vars.va_buffer,
 
-                                              *grid_constants.hu,
-                                              *grid_constants.hv,
+    *grid_constants.hu,
+    *grid_constants.hv,
 
-                                              *grid_constants.pt,
+    *grid_constants.pt,
 
-                                              jpi,
-                                              jpj);
+    jpi,
+    jpj);
 
   CUDACHECK(cudaDeviceSynchronize());
 
@@ -555,25 +556,25 @@ cuda_next_()
   get_kernel_dims(jpi + 1, jpj + 1, blocksize, gridsize);
 
   k_next<<<blocksize, gridsize, 0, 0>>>(*simulation_vars.sshn,
-                               *simulation_vars.sshn_u,
-                               *simulation_vars.sshn_v,
+                                        *simulation_vars.sshn_u,
+                                        *simulation_vars.sshn_v,
 
-                               *simulation_vars.ssha,
+                                        *simulation_vars.ssha,
 
-                               *simulation_vars.un,
-                               *simulation_vars.vn,
+                                        *simulation_vars.un,
+                                        *simulation_vars.vn,
 
-                               *simulation_vars.ua,
-                               *simulation_vars.va,
+                                        *simulation_vars.ua,
+                                        *simulation_vars.va,
 
-                               *grid_constants.e12t,
-                               *grid_constants.e12u,
-                               *grid_constants.e12v,
+                                        *grid_constants.e12t,
+                                        *grid_constants.e12u,
+                                        *grid_constants.e12v,
 
-                               *grid_constants.pt,
+                                        *grid_constants.pt,
 
-                               jpi,
-                               jpj);
+                                        jpi,
+                                        jpj);
 }
 
 void
