@@ -15,11 +15,13 @@ struct GridConstants
 {
   FortranArray2D<wp_t, 1, 1>* e1t = nullptr;
   FortranArray2D<wp_t, 1, 1>* e2t = nullptr;
+
   FortranArray2D<wp_t, 0, 1>* e1u = nullptr;
   FortranArray2D<wp_t, 0, 1>* e2u = nullptr;
 
   FortranArray2D<wp_t, 0, 0>* e1f = nullptr;
   FortranArray2D<wp_t, 0, 0>* e2f = nullptr;
+
   FortranArray2D<wp_t, 1, 0>* e1v = nullptr;
   FortranArray2D<wp_t, 1, 0>* e2v = nullptr;
 
@@ -36,7 +38,7 @@ struct GridConstants
 
   FortranArray2D<wp_t, 1, 1>* ht = nullptr;
   FortranArray2D<wp_t, 0, 1>* hu = nullptr;
-  FortranArray2D<wp_t, 0, 1>* hv = nullptr;
+  FortranArray2D<wp_t, 1, 0>* hv = nullptr;
 
   // -1 = Water cell outside computational domain
   //  0 = Land cell
@@ -104,14 +106,46 @@ struct ModelParameters
 };
 
 __global__ void
-k_initialise_sea_surface_height(const FortranArray2D<wp_t, 1, 1>& sshn,
-                                const FortranArray2D<wp_t, 0, 1>& sshn_u,
-                                const FortranArray2D<wp_t, 1, 0>& sshn_v,
-                                const FortranArray2D<wp_t, 1, 1>& e12t,
-                                const FortranArray2D<wp_t, 0, 1>& e12u,
-                                const FortranArray2D<wp_t, 1, 0>& e12v,
-                                const int jpi,
-                                const int jpj);
+k_initialise_grid(const FortranArray2D<wp_t, 1, 1>& sshn,
+                  const FortranArray2D<wp_t, 0, 1>& sshn_u,
+                  const FortranArray2D<wp_t, 1, 0>& sshn_v,
+
+                  const FortranArray2D<wp_t, 1, 1>& e1t,
+                  const FortranArray2D<wp_t, 1, 1>& e2t,
+
+                  const FortranArray2D<wp_t, 0, 1>& e1u,
+                  const FortranArray2D<wp_t, 0, 1>& e2u,
+
+                  const FortranArray2D<wp_t, 0, 0>& e1f,
+                  const FortranArray2D<wp_t, 0, 0>& e2f,
+
+                  const FortranArray2D<wp_t, 1, 0>& e1v,
+                  const FortranArray2D<wp_t, 1, 0>& e2v,
+
+                  const FortranArray2D<wp_t, 1, 1>& e12t,
+                  const FortranArray2D<wp_t, 0, 1>& e12u,
+                  const FortranArray2D<wp_t, 1, 0>& e12v,
+
+                  const FortranArray2D<wp_t, 0, 1>& gphiu,
+                  const FortranArray2D<wp_t, 1, 0>& gphiv,
+                  const FortranArray2D<wp_t, 0, 0>& gphif,
+
+                  const FortranArray2D<wp_t, 1, 1>& xt,
+                  const FortranArray2D<wp_t, 1, 1>& yt,
+
+                  const FortranArray2D<wp_t, 1, 1>& ht,
+                  const FortranArray2D<wp_t, 0, 1>& hu,
+                  const FortranArray2D<wp_t, 1, 0>& hv,
+
+                  const FortranArray2D<int, 0, 0>& pt,
+
+                  const int jpi,
+                  const int jpj,
+
+                  const wp_t dx,
+                  const wp_t dy,
+
+                  const wp_t dep_const);
 
 __global__ void
 k_setup_model_params(const int jpi,
@@ -193,14 +227,18 @@ cuda_initialise_grid_()
             jpj);
   }
 
+  printf("[CUDA](Host) Initialising grid constants and simluation variables.\n");
+
   // Create and allocate the grid constants
   grid_constants.e1t = new FortranArray2D<wp_t, 1, 1>(jpi, jpj);
   grid_constants.e2t = new FortranArray2D<wp_t, 1, 1>(jpi, jpj);
+
   grid_constants.e1u = new FortranArray2D<wp_t, 0, 1>(jpi, jpj);
   grid_constants.e2u = new FortranArray2D<wp_t, 0, 1>(jpi, jpj);
 
   grid_constants.e1f = new FortranArray2D<wp_t, 0, 0>(jpi, jpj);
   grid_constants.e2f = new FortranArray2D<wp_t, 0, 0>(jpi, jpj);
+
   grid_constants.e1v = new FortranArray2D<wp_t, 1, 0>(jpi, jpj);
   grid_constants.e2v = new FortranArray2D<wp_t, 1, 0>(jpi, jpj);
 
@@ -217,7 +255,7 @@ cuda_initialise_grid_()
 
   grid_constants.ht = new FortranArray2D<wp_t, 1, 1>(jpi, jpj);
   grid_constants.hu = new FortranArray2D<wp_t, 0, 1>(jpi, jpj);
-  grid_constants.hv = new FortranArray2D<wp_t, 0, 1>(jpi, jpj);
+  grid_constants.hv = new FortranArray2D<wp_t, 1, 0>(jpi, jpj);
 
   grid_constants.pt = new FortranArray2D<int, 0, 0>(jpi + 1, jpj + 1);
 
@@ -237,28 +275,156 @@ cuda_initialise_grid_()
   simulation_vars.va = new FortranArray2D<wp_t, 1, 0>(jpi, jpj);
 
   // Initialise simulation parameters
-  k_initialise_sea_surface_height<<<jpi + 1, jpj + 1>>>(*simulation_vars.sshn,
-                                                        *simulation_vars.sshn_u,
-                                                        *simulation_vars.sshn_v,
-                                                        *grid_constants.e12t,
-                                                        *grid_constants.e12u,
-                                                        *grid_constants.e12v,
-                                                        jpi,
-                                                        jpj);
+  k_initialise_grid<<<jpi + 2, jpj + 2>>>(*simulation_vars.sshn,
+                                          *simulation_vars.sshn_u,
+                                          *simulation_vars.sshn_v,
+
+                                          *grid_constants.e1t,
+                                          *grid_constants.e2t,
+
+                                          *grid_constants.e1u,
+                                          *grid_constants.e2u,
+
+                                          *grid_constants.e1f,
+                                          *grid_constants.e2f,
+
+                                          *grid_constants.e1v,
+                                          *grid_constants.e2v,
+
+                                          *grid_constants.e12t,
+                                          *grid_constants.e12u,
+                                          *grid_constants.e12v,
+
+                                          *grid_constants.gphiu,
+                                          *grid_constants.gphiv,
+                                          *grid_constants.gphif,
+
+                                          *grid_constants.xt,
+                                          *grid_constants.yt,
+
+                                          *grid_constants.ht,
+                                          *grid_constants.hu,
+                                          *grid_constants.hv,
+
+                                          *grid_constants.pt,
+
+                                          jpi,
+                                          jpj,
+
+                                          host_model_params.dx,
+                                          host_model_params.dy,
+
+                                          host_model_params.dep_const);
 }
 
 __global__ void
-k_initialise_sea_surface_height(const FortranArray2D<wp_t, 1, 1>& sshn,
-                                const FortranArray2D<wp_t, 0, 1>& sshn_u,
-                                const FortranArray2D<wp_t, 1, 0>& sshn_v,
-                                const FortranArray2D<wp_t, 1, 1>& e12t,
-                                const FortranArray2D<wp_t, 0, 1>& e12u,
-                                const FortranArray2D<wp_t, 1, 0>& e12v,
-                                const int jpi,
-                                const int jpj)
+k_initialise_grid(const FortranArray2D<wp_t, 1, 1>& sshn,
+                  const FortranArray2D<wp_t, 0, 1>& sshn_u,
+                  const FortranArray2D<wp_t, 1, 0>& sshn_v,
+
+                  const FortranArray2D<wp_t, 1, 1>& e1t,
+                  const FortranArray2D<wp_t, 1, 1>& e2t,
+
+                  const FortranArray2D<wp_t, 0, 1>& e1u,
+                  const FortranArray2D<wp_t, 0, 1>& e2u,
+
+                  const FortranArray2D<wp_t, 0, 0>& e1f,
+                  const FortranArray2D<wp_t, 0, 0>& e2f,
+
+                  const FortranArray2D<wp_t, 1, 0>& e1v,
+                  const FortranArray2D<wp_t, 1, 0>& e2v,
+
+                  const FortranArray2D<wp_t, 1, 1>& e12t,
+                  const FortranArray2D<wp_t, 0, 1>& e12u,
+                  const FortranArray2D<wp_t, 1, 0>& e12v,
+
+                  const FortranArray2D<wp_t, 0, 1>& gphiu,
+                  const FortranArray2D<wp_t, 1, 0>& gphiv,
+                  const FortranArray2D<wp_t, 0, 0>& gphif,
+
+                  const FortranArray2D<wp_t, 1, 1>& xt,
+                  const FortranArray2D<wp_t, 1, 1>& yt,
+
+                  const FortranArray2D<wp_t, 1, 1>& ht,
+                  const FortranArray2D<wp_t, 0, 1>& hu,
+                  const FortranArray2D<wp_t, 1, 0>& hv,
+
+                  const FortranArray2D<int, 0, 0>& pt,
+
+                  const int jpi,
+                  const int jpj,
+
+                  const wp_t dx,
+                  const wp_t dy,
+
+                  const wp_t dep_const)
 {
   int ji = threadIdx.x * blockIdx.x + blockDim.x;
   int jj = threadIdx.y * blockIdx.y + blockDim.y;
+
+  // Setup the grid constants values.
+
+  // Define model solid/open boundaries via the properties of t-cells.
+  if (jj <= jpj + 1 && ji <= jpi + 1) {
+    // All inner cells
+    pt(ji, jj) = 1;
+
+    // West, East and North have solid boundaries
+    if (ji == 0 || ji == jpi + 1 || jj == jpj + 1) {
+      pt(ji, jj) = 0;
+    }
+
+    // South open boundary
+    if (jj == 0) {
+      pt(ji, jj) = -1;
+    }
+  }
+
+  if (ji <= jpi && jj <= jpj) {
+    // 1:N, 1:M
+    if (ji > 0 && jj > 0) {
+      e1t(ji, jj) = dx;
+      e2t(ji, jj) = dy;
+      e12t(ji, jj) = e1t(ji, jj) * e2t(ji, jj);
+
+      // NOTE: The NEMOLite2D Fortran code was designed to handle a dx that
+      // varies, indicating a non-linear physical grid size (different cells
+      // have different sizes). Here we assume that the dx and dy are fixed and
+      // not variant on the grid cell. This makes the calculation much easier
+      // and makes parallelising the below xt, yt initilisation possible.
+      xt(ji, jj) = e1t(ji, jj) * (static_cast<wp_t>(ji) - 0.5);
+      yt(ji, jj) = e2t(ji, jj) * (static_cast<wp_t>(jj) - 0.5);
+
+      ht(ji, jj) = dep_const;
+    }
+
+    // 0:N, 1:M
+    if (jj > 0) {
+      e1u(ji, jj) = dx;
+      e2u(ji, jj) = dy;
+      e12u(ji, jj) = e1u(ji, jj) * e2u(ji, jj);
+
+      gphiu(ji, jj) = 50.0;
+      hu(ji, jj) = dep_const;
+    }
+
+    // 1:N, 0:M
+    if (ji > 0) {
+      e1v(ji, jj) = dx;
+      e2v(ji, jj) = dy;
+      e12v(ji, jj) = e1v(ji, jj) * e2v(ji, jj);
+
+      gphiv(ji, jj) = 50.0;
+      hv(ji, jj) = dep_const;
+    }
+
+    // 0:N, 0:M
+    e1f(ji, jj) = dx;
+    e2f(ji, jj) = dy;
+    gphif(ji, jj) = 50.0;
+  }
+
+  // Setup the simulation variables initial values.
 
   if (ji <= jpi && jj > 0 && jj <= jpj) {
     int itmp1 = min(ji + 1, jpi);
@@ -290,7 +456,7 @@ cuda_setup_model_params_(int jpi,
                          wp_t cbfr,
                          wp_t visc)
 {
-  printf("Initialising model params. jpi = %d\n", jpi);
+  printf("[CUDA](Host) Initialising model params.\n");
 
   host_model_params = {
     .jpi = jpi,
