@@ -17,11 +17,6 @@ public:
   {
     // data_size = num_rows * num_cols * sizeof(type);
 
-    printf("Row end index: %d, column end index: %d, type size: %d",
-           row_end_idx,
-           col_end_idx,
-           sizeof(type));
-
     cudaError_t cudaStatus;
 
     cudaStatus = cudaMalloc((void**)&device_data, data_size);
