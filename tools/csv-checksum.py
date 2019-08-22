@@ -106,11 +106,6 @@ def print_output(deltas, incorrect_rows, args):
 
     else: 
         print("Correct!")
-
-    # Get the number of ua errors
-
-    # get the number of uv errors
-
     return
 
 def main():
