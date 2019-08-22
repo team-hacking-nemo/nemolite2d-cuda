@@ -232,9 +232,6 @@ k_next(const FortranArray2D<wp_t, 1, 1>& sshn,
        const int jpi,
        const int jpj);
 
-void
-finalise();
-
 extern "C"
 {
   void cuda_setup_model_params_(int jpi,
@@ -250,10 +247,26 @@ extern "C"
                                 wp_t visc);
 
   void cuda_initialise_grid_();
+
   void cuda_continuity_();
   void cuda_momentum_();
   void cuda_boundary_conditions_(wp_t rtime);
   void cuda_next_();
+
+  void cuda_retrieve_grid_constants_(wp_t* const out_xt,
+                                    wp_t* const out_yt,
+                                    wp_t* const out_ht,
+                                    const int jpi,
+                                    const int jpj);
+
+  void cuda_retrieve_results_(wp_t* const out_sshn,
+                              wp_t* const out_un,
+                              wp_t* const out_vn,
+                              wp_t* const out_ua,
+                              wp_t* const out_va,
+                              const int jpi,
+                              const int jpj);
+
   void cuda_finalise_();
 };
 
@@ -508,6 +521,34 @@ cuda_next_()
 
                                jpi,
                                jpj);
+}
+
+void
+cuda_retrieve_grid_constants_(wp_t* const out_xt,
+                             wp_t* const out_yt,
+                             wp_t* const out_ht,
+                             const int jpi,
+                             const int jpj)
+{
+  grid_constants.xt->retrieve_data_from_device(out_xt);
+  grid_constants.yt->retrieve_data_from_device(out_yt);
+  grid_constants.ht->retrieve_data_from_device(out_ht);
+}
+
+void
+cuda_retrieve_results_(wp_t* const out_sshn,
+                       wp_t* const out_un,
+                       wp_t* const out_vn,
+                       wp_t* const out_ua,
+                       wp_t* const out_va,
+                       const int jpi,
+                       const int jpj)
+{
+  simulation_vars.sshn->retrieve_data_from_device(out_sshn);
+  simulation_vars.un->retrieve_data_from_device(out_un);
+  simulation_vars.vn->retrieve_data_from_device(out_vn);
+  simulation_vars.ua->retrieve_data_from_device(out_ua);
+  simulation_vars.va->retrieve_data_from_device(out_va);
 }
 
 void

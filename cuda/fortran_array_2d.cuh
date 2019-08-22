@@ -22,19 +22,19 @@ public:
     cudaStatus = cudaMalloc((void**)&device_data, data_size);
     assert(cudaStatus == cudaSuccess);
 
-    host_data =
+    type* zero_data =
       reinterpret_cast<type*>(std::calloc(num_rows * num_cols, data_size));
 
     // Prepare the device object
     cudaStatus =
-      cudaMemcpy(device_data, host_data, data_size, cudaMemcpyHostToDevice);
+      cudaMemcpy(device_data, zero_data, data_size, cudaMemcpyHostToDevice);
     assert(cudaStatus == cudaSuccess);
+
+    free(zero_data);
   }
 
   __host__ ~FortranArray2D()
   {
-    free(this->host_data);
-
     cudaError_t cudaResult = cudaFree(this->device_data);
 
     if (cudaResult != cudaSuccess) {
@@ -43,7 +43,7 @@ public:
     }
   }
 
-  __host__ type* retrieve_data_from_device(type* const out_data)
+  __host__ void retrieve_data_from_device(type* const out_data)
   {
     cudaMemcpy(out_data, device_data, data_size, cudaMemcpyDeviceToHost);
   }
@@ -66,7 +66,6 @@ private:
   const int num_cols;
   const size_t data_size;
   type* device_data;
-  type* host_data;
 };
 
 /*
