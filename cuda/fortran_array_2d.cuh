@@ -5,6 +5,8 @@
 
 #include <cuda_runtime.h>
 
+#include "cuda_utils.cuh"
+
 template<typename type, int row_start_idx, int col_start_idx>
 class FortranArray2D
 {
@@ -17,35 +19,25 @@ public:
   {
     // data_size = num_rows * num_cols * sizeof(type);
 
-    cudaError_t cudaStatus;
-
-    cudaStatus = cudaMalloc((void**)&device_data, data_size);
-    assert(cudaStatus == cudaSuccess);
+    CUDACHECK(cudaMalloc((void**)&device_data, data_size));
 
     type* zero_data =
       reinterpret_cast<type*>(std::calloc(num_rows * num_cols, data_size));
 
     // Prepare the device object
-    cudaStatus =
-      cudaMemcpy(device_data, zero_data, data_size, cudaMemcpyHostToDevice);
-    assert(cudaStatus == cudaSuccess);
+    CUDACHECK(cudaMemcpy(device_data, zero_data, data_size, cudaMemcpyHostToDevice));
 
     free(zero_data);
   }
 
   __host__ ~FortranArray2D()
   {
-    cudaError_t cudaResult = cudaFree(this->device_data);
-
-    if (cudaResult != cudaSuccess) {
-      printf("Failed to free 2D array.");
-      exit(EXIT_FAILURE);
-    }
+		CUDACHECK(cudaFree(this->device_data));
   }
 
   __host__ void retrieve_data_from_device(type* const out_data)
   {
-    cudaMemcpy(out_data, device_data, data_size, cudaMemcpyDeviceToHost);
+    CUDACHECK(cudaMemcpy(out_data, device_data, data_size, cudaMemcpyDeviceToHost));
   }
 
   __host__ type* get_device_data_ptr() { return this->device_data; }
@@ -68,7 +60,7 @@ private:
   type* device_data;
 };
 
-/*
+#if defined(TEST_CODE)
 int
 testFortranArray2D()
 {
@@ -111,4 +103,4 @@ testFortranArray2D()
 
   return EXIT_SUCCESS;
 }
-*/
+#endif

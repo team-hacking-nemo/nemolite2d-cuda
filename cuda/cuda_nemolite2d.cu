@@ -5,26 +5,10 @@
 #include <cuda_runtime.h>
 
 #include "fortran_array_2d.cuh"
+#include "cuda_utils.cuh"
 
 // Working precision
 typedef double wp_t;
-
-#define CUDACHECK(ans)                                                         \
-  {                                                                            \
-    gpu_assert((ans), __FILE__, __LINE__);                                     \
-  }
-
-inline void
-gpu_assert(cudaError_t code, const char* file, int line, bool abort = true)
-{
-  if (code != cudaSuccess) {
-    fprintf(
-      stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
-    if (abort) {
-      exit(code);
-    }
-  }
-}
 
 inline void
 get_kernel_dims(const int max_x,
