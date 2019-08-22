@@ -13,6 +13,8 @@ benchmark/
 # Application output files
 *.dat
 
+tools/namelist
+
 # Prerequisites
 *.d
 
