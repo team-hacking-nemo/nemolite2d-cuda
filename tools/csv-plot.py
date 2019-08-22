@@ -77,6 +77,12 @@ def cli_args():
         help="Apply lower/upper bounds to the scales shown"
     )
     parser.add_argument(
+        "-a",
+        "--average-runtimes",
+        action="store_true",
+        help="Use average kernel times to avoid iteration count impact."
+    )
+    parser.add_argument(
         "--print-speedup",
         action="store_true",
         help="print speedup table to console"
@@ -108,7 +114,7 @@ def validate_args(args):
             else:
                 print("Warning: Provided file {:} does not exist".format(file_or_path))
     # Remove duplicates from valid files and sort
-    valid_files = sorted(list(set(valid_files)))
+    valid_files = list(set(valid_files))
 
     if valid_files is None or len(valid_files) == 0:
         print("Error: No valid files provided.")
@@ -154,13 +160,14 @@ def parse_files(files, scalelim):
 
 
 def print_speedup(individuals):
-    print("Total Speedup:")
+    print("Speedup:")
 
     for k in list(individuals.keys())[1:]:
         speedup_cols = []
         df = individuals[k]
         for col in df.columns:
-            if "speedup" in col and "total" in col and col not in speedup_cols:
+            tot_or_av = "average" if args.average_runtimes else "total"
+            if "speedup" in col and tot_or_av in col and col not in speedup_cols:
                 speedup_cols.append(col)
 
         # Construct a new data frame with just the speedup cols and the index. 
@@ -198,11 +205,17 @@ def speedup_plot(data, args):
     ycols = ["speedup_time_stepping_total"]    
     if args.kernels:
         ycols = [
-            # "speedup_time_stepping_total",
             "speedup_continuity_total",
             "speedup_momentum_total",
             "speedup_bcs_total",
             "speedup_next_total",
+        ]
+        if args.average_runtimes:
+            ycols = [
+            "speedup_continuity_average",
+            "speedup_momentum_average",
+            "speedup_bcs_average",
+            "speedup_next_average",
         ]
 
     valid_ycols = []
@@ -278,19 +291,21 @@ def line_plot(data, args):
     # Select a column to plot
 
     ycols = ["time_stepping_total"]    
+    # "time_stepping_average",
     if args.kernels:
         ycols = [
-            # "time_stepping_total",
-            # "time_stepping_average",
             "continuity_total",
-            # "continuity_average",
             "momentum_total",
-            # "momentum_average",
             "bcs_total",
-            # "bcs_average",
             "next_total",
-            # "next_average",
         ]
+        if args.average_runtimes:
+            ycols = [
+                "continuity_average",
+                "momentum_average",
+                "bcs_average",
+                "next_average",
+            ]
 
     valid_ycols = []
     for ycol in ycols:
@@ -404,19 +419,21 @@ def stackedbar_plot(data, args):
     
 
     ycols = ["time_stepping_total"]    
+    # "time_stepping_average",
     if args.kernels:
         ycols = [
-            # "time_stepping_total",
-            # "time_stepping_average",
             "continuity_total",
-            # "continuity_average",
             "momentum_total",
-            # "momentum_average",
             "bcs_total",
-            # "bcs_average",
             "next_total",
-            # "next_average",
         ]
+        if args.average_runtimes:
+            ycols = [
+                "continuity_average",
+                "momentum_average",
+                "bcs_average",
+                "next_average",
+            ]
 
     valid_ycols = []
     for ycol in ycols:
