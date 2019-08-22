@@ -453,7 +453,7 @@ CONTAINS
         !$acc parallel default(none) &
         !$acc private(jj, jpj, ji, jpi, u_e, u_w, v_s, v_n, v_sc, v_nc, u_ec, u_wc, uu_e, uu_w, uu_s, uu_n, vv_e, vv_w, vv_s, vv_n, depe, depw, deps, depn, dudx_e, dudy_n, dvdx_e, dvdy_n, dudx_w, dudy_s, dvdx_w, dvdy_s, adv, vis, hpg, cor) &
         !$acc present(ssha_u, ssha_v, e1t, e2t, e1u, e2u, e1v, e2v, e1f, e2f, e12t, e12u, e12v) &
-	!$acc present(pt, gphiu, gphiv, gphif, xt, yt, ht, hu, hv, un, vn, sshn, sshn_u, sshn_v, ua, va)
+        !$acc present(pt, gphiu, gphiv, gphif, xt, yt, ht, hu, hv, un, vn, sshn, sshn_u, sshn_v, ua, va)
 
         ! u equation
         !$acc loop collapse(2)
@@ -658,11 +658,7 @@ CONTAINS
         call timer_start(idxt, label='BCs')
 
         !$acc parallel &
-	!$acc present(hu, sshn_u, ssha, ua, va, sshn_v, hv, pt)
-
-        !660, Generating implicit copyin(hu(0:jpi,1:jpj),sshn_u(:,1:jpj)),Generating implicit copy(ssha(1:jpi,1:jpj),ua(:,1:jpj),va(1:jpi,:))
-	!Generating implicit copyin(sshn_v(1:jpi,:),hv(1:jpi,0:jpj),pt(0:jpi+1,0:jpj+1))
-        !open boundary condition of clamped ssh
+        !$acc present(hu, sshn_u, ssha, ua, va, sshn_v, hv, pt)
 !kernel ssh clamped obc
         amp_tide = 0.2_wp
         omega_tide = 2.0_wp*3.14159_wp/(12.42_wp*3600._wp)
@@ -678,8 +674,8 @@ CONTAINS
                     ssha(ji, jj) = amp_tide*sin(omega_tide*rtime)
                 ELSE IF (pt(ji - 1, jj) < 0) THEN
                     ssha(ji, jj) = amp_tide*sin(omega_tide*rtime)
-            END IF
-        END DO
+                END IF
+            END DO
         END DO
         !$acc end loop
 !end kernel ssh clamped obc
@@ -703,7 +699,6 @@ CONTAINS
         END DO
         !$acc end loop
 !end kernel "solid boundary conditions for v-velocity"
-             
 
         !                                            Du                 Dssh
         !start of "Flather open boundary condition [---- = sqrt(g/H) * ------]" Kernel
@@ -722,7 +717,7 @@ CONTAINS
                     jiu = ji - 1
                     ua(ji, jj) = ua(jiu, jj) + SQRT(g/hu(ji, jj))*(sshn_u(ji, jj) - sshn_u(jiu, jj))
                 END IF
-                END DO
+            END DO
         END DO
         !$acc end loop
 !end kernel flather u .
@@ -760,9 +755,9 @@ CONTAINS
 ! kernel  un updating
         !$acc parallel default(none) &
         !$acc private(jj, jpj, ji, jpi) &
-	!$acc present(ua, va, ssha, ssha_u, ssha_v) &
+        !$acc present(ua, va, ssha, ssha_u, ssha_v) &
         !$acc present(un, vn, sshn, sshn_u, sshn_v, pt, e12u, e12v, e12t)
-        
+
         !$acc loop collapse(2)
         DO jj = 1, jpj
             DO ji = 0, jpi
