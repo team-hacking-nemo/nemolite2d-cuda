@@ -362,7 +362,7 @@ cuda_initialise_grid_()
 
   dim3 threads_per_block;
   dim3 num_blocks;
-  get_kernel_dims(jpi + 2, jpj + 2, threads_per_block, num_blocks);
+  get_kernel_dims(jpi + 2, jpj + 2, k_initialise_grid, threads_per_block, num_blocks);
 
   printf("Kernel dimensions: ((%d, %d), (%d, %d).\n",
          threads_per_block.x,
@@ -453,7 +453,7 @@ cuda_continuity_()
 
   dim3 threads_per_block;
   dim3 num_blocks;
-  get_kernel_dims(jpi + 1, jpj + 1, threads_per_block, num_blocks);
+  get_kernel_dims(jpi + 1, jpj + 1, k_continuity, threads_per_block, num_blocks);
 
   k_continuity<<<num_blocks, threads_per_block>>>(*simulation_vars.sshn,
                                                   *simulation_vars.sshn_u,
@@ -489,7 +489,7 @@ cuda_boundary_conditions_(wp_t rtime)
 
   dim3 threads_per_block;
   dim3 num_blocks;
-  get_kernel_dims(jpi + 1, jpj + 1, threads_per_block, num_blocks);
+  get_kernel_dims(jpi + 1, jpj + 1, k_boundary_conditions, threads_per_block, num_blocks);
 
   k_boundary_conditions<<<num_blocks, threads_per_block>>>(
     rtime,
@@ -538,7 +538,7 @@ cuda_next_()
 
   dim3 threads_per_block;
   dim3 num_blocks;
-  get_kernel_dims(jpi + 1, jpj + 1, threads_per_block, num_blocks);
+  get_kernel_dims(jpi + 1, jpj + 1, k_next, threads_per_block, num_blocks);
 
   k_next<<<num_blocks, threads_per_block>>>(*simulation_vars.sshn,
                                             *simulation_vars.sshn_u,
