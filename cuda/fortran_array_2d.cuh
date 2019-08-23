@@ -17,27 +17,32 @@ public:
     , num_cols(col_end_idx - col_start_idx + 1)
     , data_size(num_rows * num_cols * sizeof(type))
   {
-    // data_size = num_rows * num_cols * sizeof(type);
-
     CUDACHECK(cudaMalloc((void**)&device_data, data_size));
 
     type* zero_data =
-      reinterpret_cast<type*>(std::calloc(num_rows * num_cols, data_size));
+      reinterpret_cast<type*>(std::calloc(num_rows * num_cols, sizeof(type)));
 
     // Prepare the device object
-    CUDACHECK(cudaMemcpy(device_data, zero_data, data_size, cudaMemcpyHostToDevice));
+    CUDACHECK(
+      cudaMemcpy(device_data, zero_data, data_size, cudaMemcpyHostToDevice));
 
     free(zero_data);
   }
 
-  __host__ ~FortranArray2D()
-  {
-		CUDACHECK(cudaFree(this->device_data));
-  }
+  __host__ ~FortranArray2D() { CUDACHECK(cudaFree(this->device_data)); }
 
   __host__ void retrieve_data_from_device(type* const out_data)
   {
-    CUDACHECK(cudaMemcpy(out_data, device_data, data_size, cudaMemcpyDeviceToHost));
+#if DEBUG
+    printf("Retrieving data from device. Out data = 0x%x, device data = 0x%x, "
+           "data size = %llu\n",
+           out_data,
+           this->device_data,
+           data_size);
+#endif
+
+    CUDACHECK(cudaMemcpy(
+      out_data, this->device_data, this->data_size, cudaMemcpyDeviceToHost));
   }
 
   __host__ type* get_device_data_ptr() { return this->device_data; }
@@ -49,8 +54,27 @@ public:
 
   __device__ inline type& operator()(const int i, const int j) const
   {
-    return this->device_data[(i - row_start_idx) +
-                             (j - col_start_idx) * (this->num_rows)];
+    const int idx =
+      (i - row_start_idx) + (j - col_start_idx) * (this->num_rows);
+
+#if DEBUG
+    if (idx >= this->num_rows * this->num_cols) {
+      printf("Invalid array access: row_start_idx = %d, col_start_idx = %d, "
+             "num_rows = "
+             "%d, i = %d, j = "
+             "%d, idx = %llu\n",
+             row_start_idx,
+             col_start_idx,
+             this->num_rows,
+             i,
+             j,
+             idx);
+    }
+#endif
+
+    assert(idx < this->num_rows * this->num_cols);
+
+    return this->device_data[idx];
   }
 
 private:
