@@ -19,6 +19,7 @@ EXECS = nemolite2d
 # API lib is an archive that must come at the end of the list of objects
 # passed to the linker
 COMMON_MODULES = ${INF_LIB}
+NVTX_OBJECTS = nvtx.o nvtx_wrapper.o
 
 .PHONY: all nemolite2d timer_lib inf_lib
 
@@ -26,7 +27,7 @@ all: $(EXECS)
 
 # Normal targets
 nemolite2d: inf_lib timer_lib
-	${MAKE} MODULE_LIST="nemolite2d.o ${COMMON_MODULES}" nemolite2d.exe
+	${MAKE} MODULE_LIST="${NVTX_OBJECTS} nemolite2d.o ${COMMON_MODULES}" nemolite2d.exe
 
 timer_lib:
 	${MAKE} -C ${TIMER_DIR} sm_lib
@@ -34,7 +35,7 @@ timer_lib:
 inf_lib:
 	${MAKE} -C ${INF_DIR}
 
-nemolite2d.o: $(COMMON_MODULES)
+nemolite2d.o: ${NVTX_OBJECTS} $(COMMON_MODULES)  
 
 # Generic rules
 
@@ -46,6 +47,9 @@ nemolite2d.o: $(COMMON_MODULES)
 
 %.o: %.F90
 	$(F90) $(F90FLAGS) -I${INF_INC} -I${TIMER_INC} -c $<
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $<
 
 # Cleaning up
 
