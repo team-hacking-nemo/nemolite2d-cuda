@@ -1,5 +1,11 @@
 #pragma once
 
+#define FREE_ARRAY(arr)                                                        \
+  {                                                                            \
+    (arr)->free_memory();                                                      \
+    delete (arr);                                                              \
+  }
+
 #define CUDACHECK(ans)                                                         \
   {                                                                            \
     gpu_assert((ans), __FILE__, __LINE__);                                     \

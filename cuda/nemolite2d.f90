@@ -106,8 +106,8 @@ PROGRAM nemolite2d
             real(c_double) :: out_xt(jpi, jpj)
             real(c_double) :: out_yt(jpi, jpj)
             real(c_double) :: out_ht(jpi, jpj)
-            integer(c_int) :: jpi
-            integer(c_int) :: jpj
+            integer(c_int), value :: jpi
+            integer(c_int), value :: jpj
         end subroutine
     end interface
 
@@ -121,8 +121,8 @@ PROGRAM nemolite2d
             real(c_double) :: out_vn(jpi, 0:jpj)
             real(c_double) :: out_ua(0:jpi, jpj)
             real(c_double) :: out_va(jpi, 0:jpj)
-            integer(c_int) :: jpi
-            integer(c_int) :: jpj
+            integer(c_int), value :: jpi
+            integer(c_int), value :: jpj
         end subroutine
     end interface
 

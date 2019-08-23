@@ -27,9 +27,19 @@ public:
       cudaMemcpy(device_data, zero_data, data_size, cudaMemcpyHostToDevice));
 
     free(zero_data);
+
+#if DEBUG
+    printf("Constructing and allocating array: 0x%x.\n", device_data);
+#endif
   }
 
-  __host__ ~FortranArray2D() { CUDACHECK(cudaFree(this->device_data)); }
+  __host__ void free_memory()
+  {
+#if DEBUG
+    printf("Destroying device data for array: 0x%x.\n", this->device_data);
+#endif
+    CUDACHECK(cudaFree(this->device_data));
+  }
 
   __host__ void retrieve_data_from_device(type* const out_data)
   {

@@ -569,6 +569,7 @@ cuda_retrieve_grid_constants_(wp_t* const out_xt,
                               const int jpi,
                               const int jpj)
 {
+  CUDACHECK(cudaDeviceSynchronize());
   grid_constants.xt->retrieve_data_from_device(out_xt);
   grid_constants.yt->retrieve_data_from_device(out_yt);
   grid_constants.ht->retrieve_data_from_device(out_ht);
@@ -583,6 +584,7 @@ cuda_retrieve_results_(wp_t* const out_sshn,
                        const int jpi,
                        const int jpj)
 {
+  CUDACHECK(cudaDeviceSynchronize());
   simulation_vars.sshn->retrieve_data_from_device(out_sshn);
   simulation_vars.un->retrieve_data_from_device(out_un);
   simulation_vars.vn->retrieve_data_from_device(out_vn);
@@ -594,50 +596,50 @@ void
 cuda_finalise_()
 {
   // Clean up grid constants arrays.
-  delete grid_constants.e1t;
-  delete grid_constants.e2t;
-  delete grid_constants.e1u;
-  delete grid_constants.e2u;
+  FREE_ARRAY(grid_constants.e1t);
+  FREE_ARRAY(grid_constants.e2t);
+  FREE_ARRAY(grid_constants.e1u);
+  FREE_ARRAY(grid_constants.e2u);
 
-  delete grid_constants.e1f;
-  delete grid_constants.e2f;
-  delete grid_constants.e1v;
-  delete grid_constants.e2v;
+  FREE_ARRAY(grid_constants.e1f);
+  FREE_ARRAY(grid_constants.e2f);
+  FREE_ARRAY(grid_constants.e1v);
+  FREE_ARRAY(grid_constants.e2v);
 
-  delete grid_constants.e12t;
-  delete grid_constants.e12u;
-  delete grid_constants.e12v;
+  FREE_ARRAY(grid_constants.e12t);
+  FREE_ARRAY(grid_constants.e12u);
+  FREE_ARRAY(grid_constants.e12v);
 
-  delete grid_constants.gphiu;
-  delete grid_constants.gphiv;
-  delete grid_constants.gphif;
+  FREE_ARRAY(grid_constants.gphiu);
+  FREE_ARRAY(grid_constants.gphiv);
+  FREE_ARRAY(grid_constants.gphif);
 
-  delete grid_constants.xt;
-  delete grid_constants.yt;
+  FREE_ARRAY(grid_constants.xt);
+  FREE_ARRAY(grid_constants.yt);
 
-  delete grid_constants.ht;
-  delete grid_constants.hu;
-  delete grid_constants.hv;
+  FREE_ARRAY(grid_constants.ht);
+  FREE_ARRAY(grid_constants.hu);
+  FREE_ARRAY(grid_constants.hv);
 
-  delete grid_constants.pt;
+  FREE_ARRAY(grid_constants.pt);
 
   // Clean up simulation params arrays.
-  delete simulation_vars.sshn;
-  delete simulation_vars.sshn_u;
-  delete simulation_vars.sshn_v;
+  FREE_ARRAY(simulation_vars.sshn);
+  FREE_ARRAY(simulation_vars.sshn_u);
+  FREE_ARRAY(simulation_vars.sshn_v);
 
-  delete simulation_vars.ssha;
-  delete simulation_vars.ssha_u;
-  delete simulation_vars.ssha_v;
+  FREE_ARRAY(simulation_vars.ssha);
+  FREE_ARRAY(simulation_vars.ssha_u);
+  FREE_ARRAY(simulation_vars.ssha_v);
 
-  delete simulation_vars.un;
-  delete simulation_vars.vn;
+  FREE_ARRAY(simulation_vars.un);
+  FREE_ARRAY(simulation_vars.vn);
 
-  delete simulation_vars.ua;
-  delete simulation_vars.va;
+  FREE_ARRAY(simulation_vars.ua);
+  FREE_ARRAY(simulation_vars.va);
 
-  delete simulation_vars.ua_buffer;
-  delete simulation_vars.va_buffer;
+  FREE_ARRAY(simulation_vars.ua_buffer);
+  FREE_ARRAY(simulation_vars.va_buffer);
 
   CUDACHECK(cudaDeviceReset());
 }
