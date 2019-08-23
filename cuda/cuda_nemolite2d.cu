@@ -10,33 +10,6 @@
 // Working precision
 typedef double wp_t;
 
-inline void
-get_kernel_dims(const int max_x,
-                const int max_y,
-                dim3& out_blocksize,
-                dim3& out_gridsize)
-{
-
-  // Suggest block dimensions. Threads per block must not exceed 1024 on most
-  // hardware, registers will probably be a limiting factor.
-  dim3 blocksize(2, 2);
-
-  // Shrink either if larger than the actual dimensions to minimise work
-  if (blocksize.x > max_x) {
-    blocksize.x = max_y;
-  }
-  if (blocksize.y > max_x) {
-    blocksize.y = max_y;
-  }
-
-  dim3 gridsize;
-  gridsize.x = (max_x + blocksize.x - 1) / blocksize.x;
-  gridsize.y = (max_y + blocksize.y - 1) / blocksize.y;
-
-  out_blocksize = blocksize;
-  out_gridsize = gridsize;
-}
-
 struct GridConstants
 {
   FortranArray2D<wp_t, 1, 1>* e1t = nullptr;
@@ -137,38 +110,38 @@ struct ModelParameters
 };
 
 __global__ void
-k_initialise_grid(const FortranArray2D<wp_t, 1, 1>& sshn,
-                  const FortranArray2D<wp_t, 0, 1>& sshn_u,
-                  const FortranArray2D<wp_t, 1, 0>& sshn_v,
+k_initialise_grid(const FortranArray2D<wp_t, 1, 1> sshn,
+                  const FortranArray2D<wp_t, 0, 1> sshn_u,
+                  const FortranArray2D<wp_t, 1, 0> sshn_v,
 
-                  const FortranArray2D<wp_t, 1, 1>& e1t,
-                  const FortranArray2D<wp_t, 1, 1>& e2t,
+                  const FortranArray2D<wp_t, 1, 1> e1t,
+                  const FortranArray2D<wp_t, 1, 1> e2t,
 
-                  const FortranArray2D<wp_t, 0, 1>& e1u,
-                  const FortranArray2D<wp_t, 0, 1>& e2u,
+                  const FortranArray2D<wp_t, 0, 1> e1u,
+                  const FortranArray2D<wp_t, 0, 1> e2u,
 
-                  const FortranArray2D<wp_t, 0, 0>& e1f,
-                  const FortranArray2D<wp_t, 0, 0>& e2f,
+                  const FortranArray2D<wp_t, 0, 0> e1f,
+                  const FortranArray2D<wp_t, 0, 0> e2f,
 
-                  const FortranArray2D<wp_t, 1, 0>& e1v,
-                  const FortranArray2D<wp_t, 1, 0>& e2v,
+                  const FortranArray2D<wp_t, 1, 0> e1v,
+                  const FortranArray2D<wp_t, 1, 0> e2v,
 
-                  const FortranArray2D<wp_t, 1, 1>& e12t,
-                  const FortranArray2D<wp_t, 0, 1>& e12u,
-                  const FortranArray2D<wp_t, 1, 0>& e12v,
+                  const FortranArray2D<wp_t, 1, 1> e12t,
+                  const FortranArray2D<wp_t, 0, 1> e12u,
+                  const FortranArray2D<wp_t, 1, 0> e12v,
 
-                  const FortranArray2D<wp_t, 0, 1>& gphiu,
-                  const FortranArray2D<wp_t, 1, 0>& gphiv,
-                  const FortranArray2D<wp_t, 0, 0>& gphif,
+                  const FortranArray2D<wp_t, 0, 1> gphiu,
+                  const FortranArray2D<wp_t, 1, 0> gphiv,
+                  const FortranArray2D<wp_t, 0, 0> gphif,
 
-                  const FortranArray2D<wp_t, 1, 1>& xt,
-                  const FortranArray2D<wp_t, 1, 1>& yt,
+                  const FortranArray2D<wp_t, 1, 1> xt,
+                  const FortranArray2D<wp_t, 1, 1> yt,
 
-                  const FortranArray2D<wp_t, 1, 1>& ht,
-                  const FortranArray2D<wp_t, 0, 1>& hu,
-                  const FortranArray2D<wp_t, 1, 0>& hv,
+                  const FortranArray2D<wp_t, 1, 1> ht,
+                  const FortranArray2D<wp_t, 0, 1> hu,
+                  const FortranArray2D<wp_t, 1, 0> hv,
 
-                  const FortranArray2D<int, 0, 0>& pt,
+                  const FortranArray2D<int, 0, 0> pt,
 
                   const int jpi,
                   const int jpj,
@@ -192,19 +165,19 @@ k_setup_model_params(const int jpi,
                      const wp_t visc);
 
 __global__ void
-k_continuity(const FortranArray2D<wp_t, 1, 1>& sshn,
-             const FortranArray2D<wp_t, 0, 1>& sshn_u,
-             const FortranArray2D<wp_t, 1, 0>& sshn_v,
+k_continuity(const FortranArray2D<wp_t, 1, 1> sshn,
+             const FortranArray2D<wp_t, 0, 1> sshn_u,
+             const FortranArray2D<wp_t, 1, 0> sshn_v,
 
-             const FortranArray2D<wp_t, 1, 1>& ssha,
+             const FortranArray2D<wp_t, 1, 1> ssha,
 
-             const FortranArray2D<wp_t, 0, 1>& un,
-             const FortranArray2D<wp_t, 1, 0>& vn,
+             const FortranArray2D<wp_t, 0, 1> un,
+             const FortranArray2D<wp_t, 1, 0> vn,
 
-             const FortranArray2D<wp_t, 0, 1>& hu,
-             const FortranArray2D<wp_t, 1, 0>& hv,
+             const FortranArray2D<wp_t, 0, 1> hu,
+             const FortranArray2D<wp_t, 1, 0> hv,
 
-             const FortranArray2D<wp_t, 1, 1>& e12t,
+             const FortranArray2D<wp_t, 1, 1> e12t,
 
              const int jpi,
              const int jpj,
@@ -214,21 +187,21 @@ k_continuity(const FortranArray2D<wp_t, 1, 1>& sshn,
 __global__ void
 k_boundary_conditions(wp_t rtime,
 
-                      const FortranArray2D<wp_t, 0, 1>& sshn_u,
-                      const FortranArray2D<wp_t, 1, 0>& sshn_v,
+                      const FortranArray2D<wp_t, 0, 1> sshn_u,
+                      const FortranArray2D<wp_t, 1, 0> sshn_v,
 
-                      const FortranArray2D<wp_t, 1, 1>& ssha,
+                      const FortranArray2D<wp_t, 1, 1> ssha,
 
-                      const FortranArray2D<wp_t, 0, 1>& ua,
-                      const FortranArray2D<wp_t, 1, 0>& va,
+                      const FortranArray2D<wp_t, 0, 1> ua,
+                      const FortranArray2D<wp_t, 1, 0> va,
 
-                      const FortranArray2D<wp_t, 0, 1>& ua_buffer,
-                      const FortranArray2D<wp_t, 1, 0>& va_buffer,
+                      const FortranArray2D<wp_t, 0, 1> ua_buffer,
+                      const FortranArray2D<wp_t, 1, 0> va_buffer,
 
-                      const FortranArray2D<wp_t, 0, 1>& hu,
-                      const FortranArray2D<wp_t, 1, 0>& hv,
+                      const FortranArray2D<wp_t, 0, 1> hu,
+                      const FortranArray2D<wp_t, 1, 0> hv,
 
-                      const FortranArray2D<int, 0, 0>& pt,
+                      const FortranArray2D<int, 0, 0> pt,
 
                       const int jpi,
                       const int jpj);
@@ -237,23 +210,23 @@ __global__ void
 k_momentum();
 
 __global__ void
-k_next(const FortranArray2D<wp_t, 1, 1>& sshn,
-       const FortranArray2D<wp_t, 0, 1>& sshn_u,
-       const FortranArray2D<wp_t, 1, 0>& sshn_v,
+k_next(const FortranArray2D<wp_t, 1, 1> sshn,
+       const FortranArray2D<wp_t, 0, 1> sshn_u,
+       const FortranArray2D<wp_t, 1, 0> sshn_v,
 
-       const FortranArray2D<wp_t, 1, 1>& ssha,
+       const FortranArray2D<wp_t, 1, 1> ssha,
 
-       const FortranArray2D<wp_t, 0, 1>& un,
-       const FortranArray2D<wp_t, 1, 0>& vn,
+       const FortranArray2D<wp_t, 0, 1> un,
+       const FortranArray2D<wp_t, 1, 0> vn,
 
-       const FortranArray2D<wp_t, 0, 1>& ua,
-       const FortranArray2D<wp_t, 1, 0>& va,
+       const FortranArray2D<wp_t, 0, 1> ua,
+       const FortranArray2D<wp_t, 1, 0> va,
 
-       const FortranArray2D<wp_t, 1, 1>& e12t,
-       const FortranArray2D<wp_t, 0, 1>& e12u,
-       const FortranArray2D<wp_t, 1, 0>& e12v,
+       const FortranArray2D<wp_t, 1, 1> e12t,
+       const FortranArray2D<wp_t, 0, 1> e12u,
+       const FortranArray2D<wp_t, 1, 0> e12v,
 
-       const FortranArray2D<int, 0, 0>& pt,
+       const FortranArray2D<int, 0, 0> pt,
 
        const int jpi,
        const int jpj);
@@ -380,51 +353,64 @@ cuda_initialise_grid_()
   simulation_vars.ua_buffer = new FortranArray2D<wp_t, 0, 1>(jpi, jpj);
   simulation_vars.va_buffer = new FortranArray2D<wp_t, 1, 0>(jpi, jpj);
 
-  dim3 blocksize;
-  dim3 gridsize;
-  get_kernel_dims(jpi + 2, jpj + 2, blocksize, gridsize);
+  CUDACHECK(cudaDeviceSynchronize());
+
+  // printf("Launching test kernel...\n");
+  // k_test_kernel<<<numBlocks, threadsPerBlock>>>(*simulation_vars.ua);
+  // CUDACHECK(cudaDeviceSynchronize());
+  // printf("Synchronised test kernel.\n");
+
+  dim3 threads_per_block;
+  dim3 num_blocks;
+  get_kernel_dims(jpi + 2, jpj + 2, threads_per_block, num_blocks);
+
+  printf("Kernel dimensions: ((%d, %d), (%d, %d).\n",
+         threads_per_block.x,
+         threads_per_block.y,
+         num_blocks.x,
+         num_blocks.y);
 
   // Initialise simulation parameters
-  k_initialise_grid<<<blocksize, gridsize, 0, 0>>>(*simulation_vars.sshn,
-                                                   *simulation_vars.sshn_u,
-                                                   *simulation_vars.sshn_v,
+  k_initialise_grid<<<num_blocks, threads_per_block>>>(*simulation_vars.sshn,
+                                                       *simulation_vars.sshn_u,
+                                                       *simulation_vars.sshn_v,
 
-                                                   *grid_constants.e1t,
-                                                   *grid_constants.e2t,
+                                                       *grid_constants.e1t,
+                                                       *grid_constants.e2t,
 
-                                                   *grid_constants.e1u,
-                                                   *grid_constants.e2u,
+                                                       *grid_constants.e1u,
+                                                       *grid_constants.e2u,
 
-                                                   *grid_constants.e1f,
-                                                   *grid_constants.e2f,
+                                                       *grid_constants.e1f,
+                                                       *grid_constants.e2f,
 
-                                                   *grid_constants.e1v,
-                                                   *grid_constants.e2v,
+                                                       *grid_constants.e1v,
+                                                       *grid_constants.e2v,
 
-                                                   *grid_constants.e12t,
-                                                   *grid_constants.e12u,
-                                                   *grid_constants.e12v,
+                                                       *grid_constants.e12t,
+                                                       *grid_constants.e12u,
+                                                       *grid_constants.e12v,
 
-                                                   *grid_constants.gphiu,
-                                                   *grid_constants.gphiv,
-                                                   *grid_constants.gphif,
+                                                       *grid_constants.gphiu,
+                                                       *grid_constants.gphiv,
+                                                       *grid_constants.gphif,
 
-                                                   *grid_constants.xt,
-                                                   *grid_constants.yt,
+                                                       *grid_constants.xt,
+                                                       *grid_constants.yt,
 
-                                                   *grid_constants.ht,
-                                                   *grid_constants.hu,
-                                                   *grid_constants.hv,
+                                                       *grid_constants.ht,
+                                                       *grid_constants.hu,
+                                                       *grid_constants.hv,
 
-                                                   *grid_constants.pt,
+                                                       *grid_constants.pt,
 
-                                                   jpi,
-                                                   jpj,
+                                                       jpi,
+                                                       jpj,
 
-                                                   model_params.dx,
-                                                   model_params.dy,
+                                                       model_params.dx,
+                                                       model_params.dy,
 
-                                                   model_params.dep_const);
+                                                       model_params.dep_const);
 
   CUDACHECK(cudaDeviceSynchronize());
 }
@@ -465,29 +451,28 @@ cuda_continuity_()
   const int jpi = model_params.jpi;
   const int jpj = model_params.jpj;
 
-  dim3 blocksize;
-  dim3 gridsize;
+  dim3 threads_per_block;
+  dim3 num_blocks;
+  get_kernel_dims(jpi + 1, jpj + 1, threads_per_block, num_blocks);
 
-  get_kernel_dims(jpi + 1, jpj + 1, blocksize, gridsize);
+  k_continuity<<<num_blocks, threads_per_block>>>(*simulation_vars.sshn,
+                                                  *simulation_vars.sshn_u,
+                                                  *simulation_vars.sshn_v,
 
-  k_continuity<<<blocksize, gridsize, 0, 0>>>(*simulation_vars.sshn,
-                                              *simulation_vars.sshn_u,
-                                              *simulation_vars.sshn_v,
+                                                  *simulation_vars.ssha,
 
-                                              *simulation_vars.ssha,
+                                                  *simulation_vars.un,
+                                                  *simulation_vars.vn,
 
-                                              *simulation_vars.un,
-                                              *simulation_vars.vn,
+                                                  *grid_constants.hu,
+                                                  *grid_constants.hv,
 
-                                              *grid_constants.hu,
-                                              *grid_constants.hv,
+                                                  *grid_constants.e12t,
 
-                                              *grid_constants.e12t,
+                                                  jpi,
+                                                  jpj,
 
-                                              jpi,
-                                              jpj,
-
-                                              model_params.rdt);
+                                                  model_params.rdt);
 }
 
 void
@@ -502,11 +487,11 @@ cuda_boundary_conditions_(wp_t rtime)
   const int jpi = model_params.jpi;
   const int jpj = model_params.jpj;
 
-  dim3 blocksize;
-  dim3 gridsize;
-  get_kernel_dims(jpi + 1, jpj + 1, blocksize, gridsize);
+  dim3 threads_per_block;
+  dim3 num_blocks;
+  get_kernel_dims(jpi + 1, jpj + 1, threads_per_block, num_blocks);
 
-  k_boundary_conditions<<<blocksize, gridsize, 0, 0>>>(
+  k_boundary_conditions<<<num_blocks, threads_per_block>>>(
     rtime,
 
     *simulation_vars.sshn_u,
@@ -551,30 +536,30 @@ cuda_next_()
   const int jpi = model_params.jpi;
   const int jpj = model_params.jpj;
 
-  dim3 blocksize;
-  dim3 gridsize;
-  get_kernel_dims(jpi + 1, jpj + 1, blocksize, gridsize);
+  dim3 threads_per_block;
+  dim3 num_blocks;
+  get_kernel_dims(jpi + 1, jpj + 1, threads_per_block, num_blocks);
 
-  k_next<<<blocksize, gridsize, 0, 0>>>(*simulation_vars.sshn,
-                                        *simulation_vars.sshn_u,
-                                        *simulation_vars.sshn_v,
+  k_next<<<num_blocks, threads_per_block>>>(*simulation_vars.sshn,
+                                            *simulation_vars.sshn_u,
+                                            *simulation_vars.sshn_v,
 
-                                        *simulation_vars.ssha,
+                                            *simulation_vars.ssha,
 
-                                        *simulation_vars.un,
-                                        *simulation_vars.vn,
+                                            *simulation_vars.un,
+                                            *simulation_vars.vn,
 
-                                        *simulation_vars.ua,
-                                        *simulation_vars.va,
+                                            *simulation_vars.ua,
+                                            *simulation_vars.va,
 
-                                        *grid_constants.e12t,
-                                        *grid_constants.e12u,
-                                        *grid_constants.e12v,
+                                            *grid_constants.e12t,
+                                            *grid_constants.e12u,
+                                            *grid_constants.e12v,
 
-                                        *grid_constants.pt,
+                                            *grid_constants.pt,
 
-                                        jpi,
-                                        jpj);
+                                            jpi,
+                                            jpj);
 }
 
 void
@@ -658,38 +643,38 @@ cuda_finalise_()
 }
 
 __global__ void
-k_initialise_grid(const FortranArray2D<wp_t, 1, 1>& sshn,
-                  const FortranArray2D<wp_t, 0, 1>& sshn_u,
-                  const FortranArray2D<wp_t, 1, 0>& sshn_v,
+k_initialise_grid(const FortranArray2D<wp_t, 1, 1> sshn,
+                  const FortranArray2D<wp_t, 0, 1> sshn_u,
+                  const FortranArray2D<wp_t, 1, 0> sshn_v,
 
-                  const FortranArray2D<wp_t, 1, 1>& e1t,
-                  const FortranArray2D<wp_t, 1, 1>& e2t,
+                  const FortranArray2D<wp_t, 1, 1> e1t,
+                  const FortranArray2D<wp_t, 1, 1> e2t,
 
-                  const FortranArray2D<wp_t, 0, 1>& e1u,
-                  const FortranArray2D<wp_t, 0, 1>& e2u,
+                  const FortranArray2D<wp_t, 0, 1> e1u,
+                  const FortranArray2D<wp_t, 0, 1> e2u,
 
-                  const FortranArray2D<wp_t, 0, 0>& e1f,
-                  const FortranArray2D<wp_t, 0, 0>& e2f,
+                  const FortranArray2D<wp_t, 0, 0> e1f,
+                  const FortranArray2D<wp_t, 0, 0> e2f,
 
-                  const FortranArray2D<wp_t, 1, 0>& e1v,
-                  const FortranArray2D<wp_t, 1, 0>& e2v,
+                  const FortranArray2D<wp_t, 1, 0> e1v,
+                  const FortranArray2D<wp_t, 1, 0> e2v,
 
-                  const FortranArray2D<wp_t, 1, 1>& e12t,
-                  const FortranArray2D<wp_t, 0, 1>& e12u,
-                  const FortranArray2D<wp_t, 1, 0>& e12v,
+                  const FortranArray2D<wp_t, 1, 1> e12t,
+                  const FortranArray2D<wp_t, 0, 1> e12u,
+                  const FortranArray2D<wp_t, 1, 0> e12v,
 
-                  const FortranArray2D<wp_t, 0, 1>& gphiu,
-                  const FortranArray2D<wp_t, 1, 0>& gphiv,
-                  const FortranArray2D<wp_t, 0, 0>& gphif,
+                  const FortranArray2D<wp_t, 0, 1> gphiu,
+                  const FortranArray2D<wp_t, 1, 0> gphiv,
+                  const FortranArray2D<wp_t, 0, 0> gphif,
 
-                  const FortranArray2D<wp_t, 1, 1>& xt,
-                  const FortranArray2D<wp_t, 1, 1>& yt,
+                  const FortranArray2D<wp_t, 1, 1> xt,
+                  const FortranArray2D<wp_t, 1, 1> yt,
 
-                  const FortranArray2D<wp_t, 1, 1>& ht,
-                  const FortranArray2D<wp_t, 0, 1>& hu,
-                  const FortranArray2D<wp_t, 1, 0>& hv,
+                  const FortranArray2D<wp_t, 1, 1> ht,
+                  const FortranArray2D<wp_t, 0, 1> hu,
+                  const FortranArray2D<wp_t, 1, 0> hv,
 
-                  const FortranArray2D<int, 0, 0>& pt,
+                  const FortranArray2D<int, 0, 0> pt,
 
                   const int jpi,
                   const int jpj,
@@ -699,8 +684,8 @@ k_initialise_grid(const FortranArray2D<wp_t, 1, 1>& sshn,
 
                   const wp_t dep_const)
 {
-  int ji = threadIdx.x * blockIdx.x + blockDim.x;
-  int jj = threadIdx.y * blockIdx.y + blockDim.y;
+  int ji = threadIdx.x + blockIdx.x * blockDim.x;
+  int jj = threadIdx.y + blockIdx.y * blockDim.y;
 
   // Setup the grid constants values.
 
@@ -784,27 +769,27 @@ k_initialise_grid(const FortranArray2D<wp_t, 1, 1>& sshn,
 }
 
 __global__ void
-k_continuity(const FortranArray2D<wp_t, 1, 1>& sshn,
-             const FortranArray2D<wp_t, 0, 1>& sshn_u,
-             const FortranArray2D<wp_t, 1, 0>& sshn_v,
+k_continuity(const FortranArray2D<wp_t, 1, 1> sshn,
+             const FortranArray2D<wp_t, 0, 1> sshn_u,
+             const FortranArray2D<wp_t, 1, 0> sshn_v,
 
-             const FortranArray2D<wp_t, 1, 1>& ssha,
+             const FortranArray2D<wp_t, 1, 1> ssha,
 
-             const FortranArray2D<wp_t, 0, 1>& un,
-             const FortranArray2D<wp_t, 1, 0>& vn,
+             const FortranArray2D<wp_t, 0, 1> un,
+             const FortranArray2D<wp_t, 1, 0> vn,
 
-             const FortranArray2D<wp_t, 0, 1>& hu,
-             const FortranArray2D<wp_t, 1, 0>& hv,
+             const FortranArray2D<wp_t, 0, 1> hu,
+             const FortranArray2D<wp_t, 1, 0> hv,
 
-             const FortranArray2D<wp_t, 1, 1>& e12t,
+             const FortranArray2D<wp_t, 1, 1> e12t,
 
              const int jpi,
              const int jpj,
 
              const int rdt)
 {
-  const int ji = threadIdx.x * blockIdx.x + blockDim.x;
-  const int jj = threadIdx.y * blockIdx.y + blockDim.y;
+  const int ji = threadIdx.x + blockIdx.x * blockDim.x;
+  const int jj = threadIdx.y + blockIdx.y * blockDim.y;
 
   if (ji == 0 || ji > jpi || jj == 0 || jj > jpj) {
     return;
@@ -827,21 +812,21 @@ k_momentum()
 
 __global__ void
 k_boundary_conditions(wp_t rtime,
-                      const FortranArray2D<wp_t, 0, 1>& sshn_u,
-                      const FortranArray2D<wp_t, 1, 0>& sshn_v,
+                      const FortranArray2D<wp_t, 0, 1> sshn_u,
+                      const FortranArray2D<wp_t, 1, 0> sshn_v,
 
-                      const FortranArray2D<wp_t, 1, 1>& ssha,
+                      const FortranArray2D<wp_t, 1, 1> ssha,
 
-                      const FortranArray2D<wp_t, 0, 1>& ua,
-                      const FortranArray2D<wp_t, 1, 0>& va,
+                      const FortranArray2D<wp_t, 0, 1> ua,
+                      const FortranArray2D<wp_t, 1, 0> va,
 
-                      const FortranArray2D<wp_t, 0, 1>& ua_buffer,
-                      const FortranArray2D<wp_t, 1, 0>& va_buffer,
+                      const FortranArray2D<wp_t, 0, 1> ua_buffer,
+                      const FortranArray2D<wp_t, 1, 0> va_buffer,
 
-                      const FortranArray2D<wp_t, 0, 1>& hu,
-                      const FortranArray2D<wp_t, 1, 0>& hv,
+                      const FortranArray2D<wp_t, 0, 1> hu,
+                      const FortranArray2D<wp_t, 1, 0> hv,
 
-                      const FortranArray2D<int, 0, 0>& pt,
+                      const FortranArray2D<int, 0, 0> pt,
 
                       const int jpi,
                       const int jpj)
@@ -849,8 +834,8 @@ k_boundary_conditions(wp_t rtime,
   const wp_t amp_tide = 0.2;
   const wp_t omega_tide = (2.0 * 3.14159) / (12.42 * 3600.0);
 
-  int ji = threadIdx.x * blockIdx.x + blockDim.x;
-  int jj = threadIdx.y * blockIdx.y + blockDim.y;
+  int ji = threadIdx.x + blockIdx.x * blockDim.x;
+  int jj = threadIdx.y + blockIdx.y * blockDim.y;
 
   if (ji > jpi || jj > jpj) {
     return;
@@ -915,29 +900,29 @@ k_boundary_conditions(wp_t rtime,
 }
 
 __global__ void
-k_next(const FortranArray2D<wp_t, 1, 1>& sshn,
-       const FortranArray2D<wp_t, 0, 1>& sshn_u,
-       const FortranArray2D<wp_t, 1, 0>& sshn_v,
+k_next(const FortranArray2D<wp_t, 1, 1> sshn,
+       const FortranArray2D<wp_t, 0, 1> sshn_u,
+       const FortranArray2D<wp_t, 1, 0> sshn_v,
 
-       const FortranArray2D<wp_t, 1, 1>& ssha,
+       const FortranArray2D<wp_t, 1, 1> ssha,
 
-       const FortranArray2D<wp_t, 0, 1>& un,
-       const FortranArray2D<wp_t, 1, 0>& vn,
+       const FortranArray2D<wp_t, 0, 1> un,
+       const FortranArray2D<wp_t, 1, 0> vn,
 
-       const FortranArray2D<wp_t, 0, 1>& ua,
-       const FortranArray2D<wp_t, 1, 0>& va,
+       const FortranArray2D<wp_t, 0, 1> ua,
+       const FortranArray2D<wp_t, 1, 0> va,
 
-       const FortranArray2D<wp_t, 1, 1>& e12t,
-       const FortranArray2D<wp_t, 0, 1>& e12u,
-       const FortranArray2D<wp_t, 1, 0>& e12v,
+       const FortranArray2D<wp_t, 1, 1> e12t,
+       const FortranArray2D<wp_t, 0, 1> e12u,
+       const FortranArray2D<wp_t, 1, 0> e12v,
 
-       const FortranArray2D<int, 0, 0>& pt,
+       const FortranArray2D<int, 0, 0> pt,
 
        const int jpi,
        const int jpj)
 {
-  int ji = threadIdx.x * blockIdx.x + blockDim.x;
-  int jj = threadIdx.y * blockIdx.y + blockDim.y;
+  int ji = threadIdx.x + blockIdx.x * blockDim.x;
+  int jj = threadIdx.y + blockIdx.y * blockDim.y;
 
   if (ji > jpi || jj > jpj) {
     return;
