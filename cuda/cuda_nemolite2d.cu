@@ -301,10 +301,10 @@ SimulationVariables simulation_vars;
 
 ModelParameters model_params;
 
-__device__ __constant__ wp_t pi;
-__device__ __constant__ wp_t g;     // Gravity
-__device__ __constant__ wp_t omega; // Earth rotation speed (s^(-1))
-__device__ __constant__ wp_t d2r;   // Degrees to radians
+__constant__ wp_t pi;
+__constant__ wp_t g;     // Gravity
+__constant__ wp_t omega; // Earth rotation speed (s^(-1))
+__constant__ wp_t d2r;   // Degrees to radians
 
 void
 cuda_initialise_grid_()
