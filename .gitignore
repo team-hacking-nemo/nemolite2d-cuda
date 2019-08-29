@@ -8,18 +8,18 @@
 *.nvvp
 
 # Text files/log files
-benchmark/
 *.txt
 *.log 
 *.csv
-
 .env
 .venv
 
+# Benchmark directory
+benchmark/
+tools/namelist
+
 # Application output files
 *.dat
-
-tools/namelist
 
 # Prerequisites
 *.d
