@@ -5,6 +5,8 @@
 
 #include <cuda_runtime.h>
 
+#include "cuda_utils.cuh"
+
 template<typename type, int row_start_idx, int col_start_idx>
 class FortranArray2D
 {
@@ -15,43 +17,74 @@ public:
     , num_cols(col_end_idx - col_start_idx + 1)
     , data_size(num_rows * num_cols * sizeof(type))
   {
-    // data_size = num_rows * num_cols * sizeof(type);
+    CUDACHECK(cudaMalloc((void**)&device_data, data_size));
 
-    cudaError_t cudaStatus;
-
-    cudaStatus = cudaMalloc((void**)&device_data, data_size);
-    assert(cudaStatus == cudaSuccess);
-
-    host_data =
-      reinterpret_cast<type*>(std::calloc(num_rows * num_cols, data_size));
+    type* zero_data =
+      reinterpret_cast<type*>(std::calloc(num_rows * num_cols, sizeof(type)));
 
     // Prepare the device object
-    cudaStatus =
-      cudaMemcpy(device_data, host_data, data_size, cudaMemcpyHostToDevice);
-    assert(cudaStatus == cudaSuccess);
+    CUDACHECK(
+      cudaMemcpy(device_data, zero_data, data_size, cudaMemcpyHostToDevice));
+
+    free(zero_data);
+
+#if DEBUG
+    printf("Constructing and allocating array: 0x%x.\n", device_data);
+#endif
   }
 
-  __host__ ~FortranArray2D()
+  __host__ void free_memory()
   {
-    free(this->host_data);
-
-    cudaError_t cudaResult = cudaFree(this->device_data);
-
-    if (cudaResult != cudaSuccess) {
-      printf("Failed to free 2D array.");
-      exit(EXIT_FAILURE);
-    }
+#if DEBUG
+    printf("Destroying device data for array: 0x%x.\n", this->device_data);
+#endif
+    CUDACHECK(cudaFree(this->device_data));
   }
 
-  __host__ type* retrieve_data_from_device(type* const out_data)
+  __host__ void retrieve_data_from_device(type* const out_data)
   {
-    cudaMemcpy(out_data, device_data, data_size, cudaMemcpyDeviceToHost);
+#if DEBUG
+    printf("Retrieving data from device. Out data = 0x%x, device data = 0x%x, "
+           "data size = %llu\n",
+           out_data,
+           this->device_data,
+           data_size);
+#endif
+
+    CUDACHECK(cudaMemcpy(
+      out_data, this->device_data, this->data_size, cudaMemcpyDeviceToHost));
+  }
+
+  __host__ type* get_device_data_ptr() { return this->device_data; }
+
+  __host__ void set_device_data_ptr(type* new_device_data_ptr)
+  {
+    this->device_data = new_device_data_ptr;
   }
 
   __device__ inline type& operator()(const int i, const int j) const
   {
-    return this->device_data[(i - row_start_idx) +
-                             (j - col_start_idx) * (this->num_rows)];
+    const int idx =
+      (i - row_start_idx) + (j - col_start_idx) * (this->num_rows);
+
+#if DEBUG
+    if (idx >= this->num_rows * this->num_cols) {
+      printf("Invalid array access: row_start_idx = %d, col_start_idx = %d, "
+             "num_rows = "
+             "%d, i = %d, j = "
+             "%d, idx = %llu\n",
+             row_start_idx,
+             col_start_idx,
+             this->num_rows,
+             i,
+             j,
+             idx);
+    }
+#endif
+
+    assert(idx < this->num_rows * this->num_cols);
+
+    return this->device_data[idx];
   }
 
 private:
@@ -59,10 +92,9 @@ private:
   const int num_cols;
   const size_t data_size;
   type* device_data;
-  type* host_data;
 };
 
-/*
+#if defined(TEST_CODE)
 int
 testFortranArray2D()
 {
@@ -105,4 +137,4 @@ testFortranArray2D()
 
   return EXIT_SUCCESS;
 }
-*/
+#endif

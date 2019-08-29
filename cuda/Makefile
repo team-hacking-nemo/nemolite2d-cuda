@@ -15,7 +15,7 @@ INF_INC = ${INF_DIR}/src
 INF_LIB = ${INF_DIR}/src/dl_esm_inf_fd.a
 
 CUDA_OBJS = cuda_nemolite2d.o
-CUDA_HEADERS = fortran_array_2d.cuh
+CUDA_HEADERS = fortran_array_2d.cuh cuda_utils.cuh
 
 EXECS = nemolite2d
 

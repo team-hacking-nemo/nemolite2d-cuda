@@ -38,6 +38,10 @@ PROGRAM nemolite2d
 
     REAL(wp), ALLOCATABLE :: un(:, :), vn(:, :), ua(:, :), va(:, :)
 
+    ! Arrays to hold output from CUDA.
+    REAL(wp), ALLOCATABLE :: xt_cuda(:, :), yt_cuda(:, :), ht_cuda(:, :)
+    REAL(wp), ALLOCATABLE :: sshn_cuda(:, :), un_cuda(:, :), vn_cuda(:, :), ua_cuda(:, :), va_cuda(:, :)
+
     INTEGER(c_int)  :: jpiglo, jpjglo, jpi, jpj        !dimensions of grid
     INTEGER(c_int)  :: jphgr_msh                       !type of grid
     INTEGER(c_int)  :: nit000, nitend, irecord         !start-end and record time steps
@@ -55,23 +59,72 @@ PROGRAM nemolite2d
     REAL(wp) :: rtmp1, rtmp2, rtmp3, rtmp4      !real temporary variables
     INTEGER(c_int) :: idxt ! Index for main-loop timer
 
-    interface 
-    subroutine cuda_setup_model(jpi, jpj, dx, dy, dep_const, nit000, nitend, irecord, rdt, cbfr, visc ) bind(C,name="cuda_setup_model_params_")
-      use, intrinsic::iso_c_binding, only : c_int, c_float, c_double
-      implicit none
-        integer(c_int), value :: jpi
-        integer(c_int), value :: jpj
-        real(c_double), value :: dx
-        real(c_double), value :: dy
-        real(c_double), value :: dep_const
-        integer(c_int), value :: nit000
-        integer(c_int), value :: nitend
-        integer(c_int), value :: irecord
-        real(c_double), value :: rdt
-        real(c_double), value :: cbfr
-        real(c_double), value :: visc
-    end subroutine
-  end interface
+    interface
+        subroutine cuda_setup_model(&
+            & jpi, &
+            & jpj, &
+            & dx, &
+            & dy, &
+            & dep_const, &
+            & nit000, &
+            & nitend, &
+            & irecord, &
+            & rdt, &
+            & cbfr, &
+            & visc &
+          & ) bind(C, name="cuda_setup_model_params_")
+            use, intrinsic::iso_c_binding, only: c_int, c_float, c_double
+            implicit none
+            integer(c_int), value :: jpi
+            integer(c_int), value :: jpj
+            real(c_double), value :: dx
+            real(c_double), value :: dy
+            real(c_double), value :: dep_const
+            integer(c_int), value :: nit000
+            integer(c_int), value :: nitend
+            integer(c_int), value :: irecord
+            real(c_double), value :: rdt
+            real(c_double), value :: cbfr
+            real(c_double), value :: visc
+        end subroutine
+    end interface
+
+    interface
+        subroutine cuda_boundary_conditions(rtime) &
+                & bind(C, name="cuda_boundary_conditions_")
+            use, intrinsic::iso_c_binding, only: c_double
+            implicit none
+            real(c_double), value :: rtime
+        end subroutine
+    end interface
+
+    interface
+        subroutine cuda_retrieve_grid_constants(out_xt, out_yt, out_ht, jpi, jpj) &
+                & bind(C, name="cuda_retrieve_grid_constants_")
+            use, intrinsic::iso_c_binding, only: c_int, c_double
+            implicit none
+            real(c_double) :: out_xt(jpi, jpj)
+            real(c_double) :: out_yt(jpi, jpj)
+            real(c_double) :: out_ht(jpi, jpj)
+            integer(c_int), value :: jpi
+            integer(c_int), value :: jpj
+        end subroutine
+    end interface
+
+    interface
+        subroutine cuda_retrieve_results(out_sshn, out_un, out_vn, out_ua, out_va, jpi, jpj) &
+                & bind(C, name="cuda_retrieve_results_")
+            use, intrinsic::iso_c_binding, only: c_int, c_double
+            implicit none
+            real(c_double) :: out_sshn(jpi, jpj)
+            real(c_double) :: out_un(0:jpi, jpj)
+            real(c_double) :: out_vn(jpi, 0:jpj)
+            real(c_double) :: out_ua(0:jpi, jpj)
+            real(c_double) :: out_va(jpi, 0:jpj)
+            integer(c_int), value :: jpi
+            integer(c_int), value :: jpj
+        end subroutine
+    end interface
 
     !! read in model parameters
     CALL setup
@@ -84,8 +137,12 @@ PROGRAM nemolite2d
 
     CALL cuda_initialise_grid
 
+    CALL cuda_retrieve_grid_constants(xt_cuda, yt_cuda, ht_cuda, jpi, jpj)
+    CALL cuda_retrieve_results(sshn_cuda, un_cuda, vn_cuda, ua_cuda, va_cuda, jpi, jpj)
+
     istp = 0
     CALL output
+    CALL output_cuda
 
     call timer_start(idxt, label='Time-stepping', &
                      num_repeats=INT(nitend - nit000 + 1, 8))
@@ -96,6 +153,8 @@ PROGRAM nemolite2d
         CALL step
     END DO
 
+    call cuda_retrieve_results(sshn_cuda, un_cuda, vn_cuda, ua_cuda, va_cuda, jpi, jpj)
+
     call timer_stop(idxt)
 
     ! Compute and output some checksums for error checking
@@ -103,6 +162,11 @@ PROGRAM nemolite2d
                          field_checksum(ua(1:jpiglo, 1:jpjglo)))
     call model_write_log("('va checksum = ',E16.8)", &
                          field_checksum(va(1:jpiglo, 1:jpjglo)))
+
+    call model_write_log("('ua_cuda checksum = ',E16.8)", &
+                         field_checksum(ua_cuda(1:jpiglo, 1:jpjglo)))
+    call model_write_log("('va_cuda checksum = ',E16.8)", &
+                         field_checksum(va_cuda(1:jpiglo, 1:jpjglo)))
 
     !! finalise the model run
     CALL finalisation
@@ -320,7 +384,7 @@ CONTAINS
 
     SUBROUTINE allocation
         !! Read in model setup parameters and allocate working arrays
-        INTEGER(c_int) :: ierr(11)
+        INTEGER(c_int) :: ierr(15)
         REAL(wp) :: init_val
 
         ALLOCATE (e1t(jpi, jpj), e2t(jpi, jpj), e1u(0:jpi, jpj), e2u(0:jpi, jpj), STAT=ierr(1))
@@ -340,6 +404,12 @@ CONTAINS
         ALLOCATE (un(0:jpi, jpj), vn(jpi, 0:jpj), ua(0:jpi, jpj), va(jpi, 0:jpj), STAT=ierr(10))
 
         ALLOCATE (pt(0:jpi + 1, 0:jpj + 1), STAT=ierr(11))
+
+        ALLOCATE (sshn_cuda(jpi, jpj), STAT=ierr(12))
+        ALLOCATE (un_cuda(0:jpi, jpj), vn_cuda(jpi, 0:jpj), STAT=ierr(13))
+        ALLOCATE (ua_cuda(0:jpi, jpj), va_cuda(jpi, 0:jpj), STAT=ierr(14))
+
+        ALLOCATE (xt_cuda(jpi, jpj), yt_cuda(jpi, jpj), ht_cuda(jpi, jpj), STAT=ierr(15))
 
         IF (ANY(ierr /= 0, 1)) STOP "in SUBROUTINE ALLOCATION: failed to allocate arrays"
 
@@ -413,13 +483,21 @@ CONTAINS
 
         rtime = REAL(istp, wp)*rdt
 
-        CALL cuda_momentum()
+        CALL cuda_continuity
+        CALL cuda_momentum
+        CALL cuda_boundary_conditions(rtime)
+        CALL cuda_next
 
         CALL continuity
         CALL momentum
         CALL bc(rtime)  ! open and solid boundary condition
         CALL next
-        IF (MOD(istp, irecord) == 0) CALL output
+
+        IF (MOD(istp, irecord) == 0) THEN
+            CALL cuda_retrieve_results(sshn_cuda, un_cuda, vn_cuda, ua_cuda, va_cuda, jpi, jpj)
+            CALL output
+            CALL output_cuda
+        END IF
 
     END SUBROUTINE step
 
@@ -833,8 +911,32 @@ CONTAINS
         END DO
 
         CLOSE (1)
-
     END SUBROUTINE output
+
+    SUBROUTINE output_cuda
+        ! output model results
+        CHARACTER(len=5) :: fname
+        WRITE (fname, '(I5.5)') istp
+        OPEN (1, file='go2d_cuda_'//fname//'.dat', STATUS='UNKNOWN')
+        REWIND (1)
+
+        DO jj = 1, jpj
+            DO ji = 1, jpi
+                rtmp1 = 0.5_wp*(un_cuda(ji - 1, jj) + un_cuda(ji, jj))
+                rtmp2 = 0.5_wp*(vn_cuda(ji, jj - 1) + vn_cuda(ji, jj))
+
+                ! write "x-coord, y-coord, depth, ssh, u-velocity, v-velocity" to ASCII files
+
+                !WRITE(1,'(2f20.3, 2f15.4, 2e18.3)')  &
+                !WRITE(1,'(f20.3,'','',f20.3,'','',f15.4,'','',f15.4,'','',f18.3,'','',f18.3)') &
+                write (1, '(6e16.7)') &
+                     & xt_cuda(ji, jj), yt_cuda(ji, jj), ht_cuda(ji, jj), sshn_cuda(ji, jj), rtmp1, rtmp2
+            END DO
+            WRITE (1, *)
+        END DO
+
+        CLOSE (1)
+    END SUBROUTINE output_cuda
 
 !+++++++++++++++++++++++++++++++++++
 
