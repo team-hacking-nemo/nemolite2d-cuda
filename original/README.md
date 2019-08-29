@@ -1,9 +1,7 @@
 # Original NEMOLite2D #
 
 This directory contains the original, single source-file version of
-NEMOLite2D for reference. Note that it has been enhanced slightly and
-thus makes use of checksum and I/O routines from both the dl_esm_inf
-library and the `../common` directory.
+NEMOLite2D for reference.
 
 ## Compiling ##
 

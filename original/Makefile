@@ -10,29 +10,23 @@ SHARED_DIR = ../shared
 TIMER_DIR = ${SHARED_DIR}/dl_timer
 TIMER_INC = ${TIMER_DIR}/src
 TIMER_LIB = ${TIMER_DIR}/dl_timer_lib.a
-INF_DIR = ${SHARED_DIR}/dl_esm_inf/finite_difference
-INF_INC = ${INF_DIR}/src
-INF_LIB = ${INF_DIR}/src/dl_esm_inf_fd.a
 
 EXECS = nemolite2d
 
 # API lib is an archive that must come at the end of the list of objects
 # passed to the linker
-COMMON_MODULES = ${INF_LIB}
+COMMON_MODULES =
 
-.PHONY: all nemolite2d timer_lib inf_lib
+.PHONY: all nemolite2d timer_lib
 
 all: $(EXECS)
 
 # Normal targets
-nemolite2d: inf_lib timer_lib
+nemolite2d: timer_lib
 	${MAKE} MODULE_LIST="nemolite2d.o ${COMMON_MODULES}" nemolite2d.exe
 
 timer_lib:
 	${MAKE} -C ${TIMER_DIR} sm_lib
-
-inf_lib:
-	${MAKE} -C ${INF_DIR}
 
 nemolite2d.o: $(COMMON_MODULES)
 
@@ -42,21 +36,18 @@ nemolite2d.o: $(COMMON_MODULES)
 	$(F90) $(OMPFLAGS) -o $@ $(MODULE_LIST) $(TIMER_LIB) $(LDFLAGS)
 
 %.o: %.f90
-	$(F90) $(F90FLAGS) -I${INF_INC} -I${TIMER_INC} -c $<
+	$(F90) $(F90FLAGS) -I${TIMER_INC} -c $<
 
 %.o: %.F90
-	$(F90) $(F90FLAGS) -I${INF_INC} -I${TIMER_INC} -c $<
+	$(F90) $(F90FLAGS) -I${TIMER_INC} -c $<
 
 # Cleaning up
 
-clean: clean_timer clean_inf
+clean: clean_timer
 	rm -f *.o *.mod *.MOD *~
 
 clean_timer:
 	${MAKE} -C ${TIMER_DIR} clean
-
-clean_inf:
-	${MAKE} -C ${INF_DIR} clean
 
 allclean: clean allclean_timer
 	rm -f *.exe
