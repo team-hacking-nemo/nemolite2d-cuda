@@ -3,9 +3,7 @@ PROGRAM nemolite2d
     !!   1) using structured grid
     !!   2) using direct data addressig structures
     use, intrinsic::iso_c_binding, only: c_double, c_float
-    use dl_timer
-    use field_mod, only: field_checksum
-    use gocean_mod, only: model_write_log
+    use dl_timer, only: timer_init, timer_start, timer_stop, timer_report
     IMPLICIT NONE
 
     INTEGER, PARAMETER :: sp = c_float
@@ -79,10 +77,10 @@ PROGRAM nemolite2d
     call timer_stop(idxt)
 
     ! Compute and output some checksums for error checking
-    call model_write_log("('ua checksum = ',E16.8)", &
-                         field_checksum(ua(1:jpiglo, 1:jpjglo)))
-    call model_write_log("('va checksum = ',E16.8)", &
-                         field_checksum(va(1:jpiglo, 1:jpjglo)))
+    call write_log("('ua checksum = ',E16.8)", &
+                   field_checksum(ua(1:jpiglo, 1:jpjglo)))
+    call write_log("('va checksum = ',E16.8)", &
+                   field_checksum(va(1:jpiglo, 1:jpjglo)))
 
     !! finalise the model run
     CALL finalisation
@@ -828,6 +826,27 @@ CONTAINS
         call timer_report()
 
     END SUBROUTINE finalisation
+
+!+++++++++++++++++++++++++++++++++++
+
+    function field_checksum(field) result(val)
+        implicit none
+        real(wp), dimension(:,:), intent(in) :: field
+        real(wp) :: val
+
+        val = SUM(ABS(field(:, :)))
+    end function field_checksum
+
+!+++++++++++++++++++++++++++++++++++
+
+  subroutine write_log(fmtstr, fvar)
+    use iso_fortran_env, only : output_unit ! access computing environment
+    implicit none
+    character(len=*), intent(in) :: fmtstr
+    real(wp), intent(in) :: fvar
+
+    write(output_unit,FMT=fmtstr) fvar
+  end subroutine write_log
 
 !+++++++++++++++++++++++++++++++++++
 
