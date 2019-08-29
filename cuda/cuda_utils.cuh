@@ -23,29 +23,44 @@ gpu_assert(cudaError_t code, const char* file, int line, bool abort = true)
   }
 }
 
+template<typename T>
 inline void
 get_kernel_dims(const int max_x,
                 const int max_y,
-                dim3& out_threads_per_block,
-                dim3& out_num_blocks)
+                T kernel,
+                dim3& out_blocksize,
+                dim3& out_gridsize)
 {
 
-  // Suggest block dimensions. Threads per block must not exceed 1024 on most
-  // hardware, registers will probably be a limiting factor.
-  dim3 threads_per_block(16, 16);
+    // Use the occupancy calculator to find the 1D numbr of threads per block which maximises occupancy. Assumes a square number. 
+    int minGridSize = 0; // Minimum grid size to achieve max occupancy
+    int totalThreadsPerBlock = 0; // Number of threads per block
+    // Query the occupancy calculator.!
+    CUDACHECK(cudaOccupancyMaxPotentialBlockSize(&minGridSize, &totalThreadsPerBlock, kernel, 0, 0));
 
-  // Shrink either if larger than the actual dimensions to minimise work
-  if (threads_per_block.x > max_x) {
-    threads_per_block = max_y;
-  }
-  if (threads_per_block.y > max_x) {
-    threads_per_block.y = max_y;
-  }
+    // Assume we alwasy want square kernels. This may be sub-optimal.
+    int blocksize_xy = (int)floor(sqrt(totalThreadsPerBlock));
 
-  dim3 num_blocks;
-  num_blocks.x = (max_x + threads_per_block.x - 1) / threads_per_block.x;
-  num_blocks.y = (max_y + threads_per_block.y - 1) / threads_per_block.y;
 
-  out_threads_per_block = threads_per_block;
-  out_num_blocks = num_blocks;
+    // Suggest block dimensions. Threads per block must not exceed 1024 on most
+    // hardware, registers will probably be a limiting factor.
+    dim3 blocksize(blocksize_xy, blocksize_xy);
+
+    // Shrink either if larger than the actual dimensions to minimise work
+    // @note this might reduce the work below ideal occupancy, for very wide/narrow problems
+    if (blocksize.x > max_x) {
+    blocksize.x = max_y;
+    }
+    if (blocksize.y > max_x) {
+    blocksize.y = max_y;
+    }
+
+    // Calculate the gridsize. 
+    dim3 gridsize;
+    gridsize.x = (max_x + blocksize.x - 1) / blocksize.x;
+    gridsize.y = (max_y + blocksize.y - 1) / blocksize.y;
+
+    //  Set for the outside ones. 
+    out_blocksize = blocksize;
+    out_gridsize = gridsize;
 }
