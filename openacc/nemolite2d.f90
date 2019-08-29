@@ -53,7 +53,6 @@ PROGRAM nemolite2d
     INTEGER  :: ji, jj                          !temporary loop index
 
     INTEGER  :: itmp1, itmp2                    !integer temporary vars
-    REAL(wp) :: rtmp1, rtmp2, rtmp3, rtmp4      !real temporary variables
     integer :: idxt ! Index for main-loop timer
 
     !! read in model parameters
@@ -64,7 +63,8 @@ PROGRAM nemolite2d
 
     ! Copy in the grid variables
     !$acc enter data &
-    !$acc copyin(ssha_u, ssha_v, e1t, e2t, e1u, e2u, e1v, e2v, e1f, e2f, e12t, e12u, e12v, pt, gphiu, gphiv, gphif, xt, yt, ht, hu, hv) &
+    !$acc copyin(ssha_u, ssha_v, e1t, e2t, e1u, e2u, e1v, e2v, e1f, e2f, e12t, e12u, e12v) &
+    !$acc copyin(pt, gphiu, gphiv, gphif, xt, yt, ht, hu, hv, rdt, cbfr) &
     !$acc create(ssha)
 
     !! setup model initial condition
@@ -333,7 +333,7 @@ CONTAINS
 !+++++++++++++++++++++++++++++++++++
 
     SUBROUTINE initialisation
-
+        REAL(wp) :: rtmp1
         call timer_init()
 
         ! define (or read in) initil ssh and velocity fields
@@ -408,11 +408,16 @@ CONTAINS
     SUBROUTINE continuity
         implicit none
         integer :: idxt
+        REAL(wp) :: rtmp1
+        REAL(wp) :: rtmp2
+        REAL(wp) :: rtmp3
+        REAL(wp) :: rtmp4
 
         call timer_start(idxt, label='Continuity')
 
 !kernel continuity
         !$acc parallel &
+        !$acc private(rtmp1, rtmp2, rtmp3, rtmp4) &
         !$acc present(hu, hv, un, vn, sshn, e12t, ssha, sshn_u, sshn_v)
         !$acc loop collapse(2)
         DO jj = 1, jpj
@@ -748,13 +753,14 @@ CONTAINS
     SUBROUTINE next
         implicit none
         integer :: idxt
+        REAL(wp) :: rtmp1
         ! update the now-velocity and ssh
 
         call timer_start(idxt, label='Next')
 
 ! kernel  un updating
         !$acc parallel default(none) &
-        !$acc private(jj, jpj, ji, jpi) &
+        !$acc private(jj, jpj, ji, jpi, rtmp1) &
         !$acc present(ua, va, ssha, ssha_u, ssha_v) &
         !$acc present(un, vn, sshn, sshn_u, sshn_v, pt, e12u, e12v, e12t)
 
@@ -832,6 +838,8 @@ CONTAINS
 
     SUBROUTINE output
 
+        REAL(wp) :: rtmp1
+        REAL(wp) :: rtmp2
         ! output model results
         CHARACTER(len=5) :: fname
         WRITE (fname, '(I5.5)') istp
